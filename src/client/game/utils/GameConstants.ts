@@ -12,15 +12,23 @@ export class GameConstants {
 
   // Energy system - faster for better gameplay
   static readonly MAX_ENERGY = 5;
-  static readonly ENERGY_COOLDOWN_MS = 5000; // 5 seconds (much faster)
-  static readonly SESSION_REFRESH_MS = 7200000; // 2 hours
+  static readonly ENERGY_COOLDOWN_MS = 3000; // 3 seconds (faster)
+  static readonly SESSION_DURATION_MS = 60000; // 1 minute sessions
 
-  // Combat
+  // Combat - New HP system
+  static readonly PLAYER_MAX_HP = 500;
+  static readonly BOSS_MAX_HP = 50000;
   static readonly FULL_ENERGY_BONUS = 1.2; // 20% bonus
   static readonly CRIT_MULTIPLIER = 3;
   static readonly PHASE2_RESISTANCE = 0.9; // 10% reduction
   static readonly ROGUE_CRIT_CHANCE = 0.3; // 30%
   static readonly DEFAULT_CRIT_CHANCE = 0.1; // 10%
+  
+  // Boss attack system
+  static readonly BOSS_ATTACK_INTERVAL_MIN = 8000; // 8 seconds
+  static readonly BOSS_ATTACK_INTERVAL_MAX = 15000; // 15 seconds
+  static readonly BOSS_DAMAGE_MIN = 50;
+  static readonly BOSS_DAMAGE_MAX = 150;
 
   // Animation timings - simplified for 0.8-second attack sequence
   static readonly ATTACK_SEQUENCE_DURATION = 800; // 0.8 seconds (per requirements 1.2, 1.3, 7.1, 7.2)

@@ -1,31 +1,33 @@
 import { Boot } from './scenes/Boot';
 import { Splash } from './scenes/Splash';
+import { CharacterSelect } from './scenes/CharacterSelect';
 import { Battle } from './scenes/Battle';
 import { Results } from './scenes/Results';
 import { Victory } from './scenes/Victory';
+import { HowToPlay } from './scenes/HowToPlay';
 import * as Phaser from 'phaser';
 import { AUTO, Game } from 'phaser';
 
 //  Raid Day Phaser.js 3.70+ Configuration
-//  800x600 canvas with mobile-optimized scaling for boss battle game
+//  Responsive canvas that fills the entire screen
 const config: Phaser.Types.Core.GameConfig = {
   type: AUTO, // Automatically choose WEBGL or CANVAS
   parent: 'game-container',
   backgroundColor: '#1a1a2e', // Dark theme for battle atmosphere
-  width: 800,
-  height: 600,
+  width: window.innerWidth,
+  height: window.innerHeight,
   scale: {
-    mode: Phaser.Scale.FIT, // Use FIT to maintain aspect ratio while filling screen
+    mode: Phaser.Scale.RESIZE, // Resize to fill entire screen
     autoCenter: Phaser.Scale.CENTER_BOTH,
-    width: 800,
-    height: 600,
+    width: window.innerWidth,
+    height: window.innerHeight,
     min: {
       width: 320,
       height: 240
     },
     max: {
-      width: 1920,
-      height: 1080
+      width: 2560,
+      height: 1440
     }
   },
   render: {
@@ -40,7 +42,7 @@ const config: Phaser.Types.Core.GameConfig = {
       debug: false,
     },
   },
-  scene: [Boot, Splash, Battle, Results, Victory],
+  scene: [Boot, Splash, CharacterSelect, HowToPlay, Battle, Results, Victory],
 };
 
 const StartGame = (parent: string) => {

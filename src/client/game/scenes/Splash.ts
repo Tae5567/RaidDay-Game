@@ -136,10 +136,17 @@ export class Splash extends Scene {
     this.title = this.add.text(0, 0, 'RAID DAY', {
       fontFamily: 'Arial Black',
       fontSize: '48px',
-      color: '#ffffff',
-      stroke: '#000000',
-      strokeThickness: 4,
+      color: '#ffff00',
+      stroke: '#ff0000',
+      strokeThickness: 6,
       align: 'center',
+      shadow: {
+        offsetX: 3,
+        offsetY: 3,
+        color: '#000000',
+        blur: 5,
+        fill: true
+      }
     }).setOrigin(0.5);
 
     // Add subtitle
@@ -301,47 +308,73 @@ export class Splash extends Scene {
   }
 
   private createPlayButton(): void {
-    const buttonContainer = this.add.container(0, 0);
-
-    // Large "FIGHT NOW!" button (per requirements)
-    const buttonBg = this.add.rectangle(0, 0, 250, 80, GameConstants.COLORS.BUTTON_ENABLED)
+    const { width } = this.scale;
+    
+    // Main play button
+    const playButtonContainer = this.add.container(0, 0);
+    const playButtonBg = this.add.rectangle(0, 0, 250, 80, GameConstants.COLORS.BUTTON_ENABLED)
       .setStrokeStyle(4, GameConstants.COLORS.TEXT_PRIMARY);
-
-    // Button text
-    const buttonText = this.add.text(0, 0, 'FIGHT NOW!', {
+    const playButtonText = this.add.text(0, 0, 'SELECT CLASS', {
       fontFamily: 'Arial Black',
-      fontSize: '24px',
+      fontSize: '20px',
       color: '#ffffff',
     }).setOrigin(0.5);
 
-    buttonContainer.add([buttonBg, buttonText]);
-    
-    // Set initial scale to be larger for mobile
-    buttonContainer.setScale(1.2);
+    playButtonContainer.add([playButtonBg, playButtonText]);
+    playButtonContainer.setScale(1.2);
 
-    // Make interactive with enhanced feedback
-    buttonBg.setInteractive({ useHandCursor: true })
+    playButtonBg.setInteractive({ useHandCursor: true })
       .on('pointerover', () => {
-        buttonBg.setFillStyle(GameConstants.COLORS.BUTTON_HOVER);
-        buttonContainer.setScale(1.25);
+        playButtonBg.setFillStyle(GameConstants.COLORS.BUTTON_HOVER);
+        playButtonContainer.setScale(1.25);
       })
       .on('pointerout', () => {
-        buttonBg.setFillStyle(GameConstants.COLORS.BUTTON_ENABLED);
-        buttonContainer.setScale(1.2);
+        playButtonBg.setFillStyle(GameConstants.COLORS.BUTTON_ENABLED);
+        playButtonContainer.setScale(1.2);
       })
       .on('pointerdown', async () => {
-        // Add press animation
         if (this.animationSystem) {
-          await this.animationSystem.animateButtonPress(buttonContainer);
+          await this.animationSystem.animateButtonPress(playButtonContainer);
         }
-        
-        // Smooth transition to Battle scene
         if (this.transitionSystem) {
-          this.transitionSystem.zoomTransition('Battle');
+          this.transitionSystem.slideTransition('CharacterSelect', 'right');
         }
       });
 
-    this.playButton = buttonContainer;
+    this.playButton = playButtonContainer;
+
+    // How to Play button
+    const howToPlayButton = this.add.container(0, 0);
+    const howToPlayBg = this.add.rectangle(0, 0, 180, 50, 0x444444)
+      .setStrokeStyle(2, 0x888888);
+    const howToPlayText = this.add.text(0, 0, 'How to Play', {
+      fontFamily: 'Arial',
+      fontSize: '16px',
+      color: '#ffffff',
+    }).setOrigin(0.5);
+
+    howToPlayButton.add([howToPlayBg, howToPlayText]);
+
+    howToPlayBg.setInteractive({ useHandCursor: true })
+      .on('pointerover', () => {
+        howToPlayBg.setFillStyle(0x666666);
+        howToPlayButton.setScale(1.05);
+      })
+      .on('pointerout', () => {
+        howToPlayBg.setFillStyle(0x444444);
+        howToPlayButton.setScale(1);
+      })
+      .on('pointerdown', async () => {
+        if (this.animationSystem) {
+          await this.animationSystem.animateButtonPress(howToPlayButton);
+        }
+        if (this.transitionSystem) {
+          this.transitionSystem.slideTransition('HowToPlay', 'up');
+        }
+      });
+
+    // Position buttons
+    this.children.add(howToPlayButton);
   }
 
 
@@ -528,8 +561,19 @@ export class Splash extends Scene {
 
     // Position play button
     if (this.playButton) {
-      this.playButton.setPosition(width / 2, height * 0.85);
+      this.playButton.setPosition(width / 2, height * 0.8);
       this.playButton.setScale(scaleFactor * 1.2); // Larger for mobile
+    }
+
+    // Position how to play button
+    const howToPlayButton = this.children.list.find(child => 
+      child instanceof Phaser.GameObjects.Container && 
+      child !== this.playButton
+    ) as Phaser.GameObjects.Container | undefined;
+    
+    if (howToPlayButton) {
+      howToPlayButton.setPosition(width / 2, height * 0.9);
+      howToPlayButton.setScale(scaleFactor);
     }
   }
 }

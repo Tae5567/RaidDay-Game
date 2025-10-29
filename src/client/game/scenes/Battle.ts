@@ -35,16 +35,20 @@ export class Battle extends Scene {
 
   // Game state
   private selectedClass: CharacterClass = CharacterClass.WARRIOR;
-  private bossCurrentHP: number = 50000; // Shared community HP
-  private bossMaxHP: number = 50000;
+  private bossCurrentHP: number = GameConstants.BOSS_MAX_HP;
+  private bossMaxHP: number = GameConstants.BOSS_MAX_HP;
+  private playerCurrentHP: number = GameConstants.PLAYER_MAX_HP;
+  private playerMaxHP: number = GameConstants.PLAYER_MAX_HP;
   private sessionDamage: number = 0;
   private sessionAttackCount: number = 0;
   private isAttacking: boolean = false;
+  private bossAttackTimer?: Phaser.Time.TimerEvent;
 
   // UI elements
   private bossHPBar?: Phaser.GameObjects.Graphics;
   private bossHPText?: Phaser.GameObjects.Text;
-  private sessionInfoText?: Phaser.GameObjects.Text;
+  private playerHPBar?: Phaser.GameObjects.Graphics;
+  private playerHPText?: Phaser.GameObjects.Text;
   private attackButton?: ActionButton;
 
   constructor() {
@@ -57,8 +61,10 @@ export class Battle extends Scene {
     console.log('Battle scene initialized with class:', this.selectedClass);
     
     // Reset state
-    this.bossCurrentHP = 50000; // Shared community HP
-    this.bossMaxHP = 50000;
+    this.bossCurrentHP = GameConstants.BOSS_MAX_HP;
+    this.bossMaxHP = GameConstants.BOSS_MAX_HP;
+    this.playerCurrentHP = GameConstants.PLAYER_MAX_HP;
+    this.playerMaxHP = GameConstants.PLAYER_MAX_HP;
     this.sessionDamage = 0;
     this.sessionAttackCount = 0;
     this.isAttacking = false;
@@ -298,8 +304,8 @@ export class Battle extends Scene {
     // HP bar (will be updated)
     this.bossHPBar = this.add.graphics();
     
-    // HP text
-    this.bossHPText = this.add.text(width / 2, hpBarY + 20, `${this.bossCurrentHP.toLocaleString()} / ${this.bossMaxHP.toLocaleString()}`, {
+    // Boss HP text
+    this.bossHPText = this.add.text(width / 2, hpBarY + 20, `Boss: ${this.bossCurrentHP.toLocaleString()} / ${this.bossMaxHP.toLocaleString()}`, {
       fontFamily: 'Arial',
       fontSize: '14px',
       color: '#ffffff',
@@ -307,14 +313,28 @@ export class Battle extends Scene {
       strokeThickness: 2,
     }).setOrigin(0.5);
 
-    // Session info display as specified
-    this.sessionInfoText = this.add.text(20, height - 100, '', {
+    // Player HP bar at bottom
+    const playerHPBarY = height - 120;
+    const playerHPBarWidth = Math.min(width - 40, 300);
+    
+    // Player HP bar background
+    const playerHPBarBg = this.add.graphics();
+    playerHPBarBg.fillStyle(0x333333);
+    playerHPBarBg.fillRect(width / 2 - playerHPBarWidth / 2, playerHPBarY - 10, playerHPBarWidth, 20);
+    playerHPBarBg.lineStyle(2, 0xffffff);
+    playerHPBarBg.strokeRect(width / 2 - playerHPBarWidth / 2, playerHPBarY - 10, playerHPBarWidth, 20);
+    
+    // Player HP bar (will be updated)
+    this.playerHPBar = this.add.graphics();
+    
+    // Player HP text
+    this.playerHPText = this.add.text(width / 2, playerHPBarY + 20, `Your HP: ${this.playerCurrentHP} / ${this.playerMaxHP}`, {
       fontFamily: 'Arial',
       fontSize: '14px',
       color: '#ffffff',
       stroke: '#000000',
       strokeThickness: 2,
-    });
+    }).setOrigin(0.5);
 
     // Create attack button as specified
     this.createAttackButton();
@@ -355,20 +375,89 @@ export class Battle extends Scene {
   }
 
   private startSession(): void {
-    if (this.sessionSystem) {
-      this.sessionSystem.startSession();
+    // Start boss attack system
+    this.startBossAttacks();
+    
+    // Update UI every second
+    this.time.addEvent({
+      delay: 1000,
+      callback: () => this.updateUI(),
+      loop: true
+    });
+    
+    // Check for battle end conditions
+    this.time.addEvent({
+      delay: 500,
+      callback: () => this.checkBattleEnd(),
+      loop: true
+    });
+  }
+
+  private startBossAttacks(): void {
+    const scheduleNextAttack = () => {
+      const delay = Phaser.Math.Between(
+        GameConstants.BOSS_ATTACK_INTERVAL_MIN,
+        GameConstants.BOSS_ATTACK_INTERVAL_MAX
+      );
       
-      // Listen for session end event
-      this.sessionSystem.on('sessionEnded', () => {
-        this.transitionToResults();
+      this.bossAttackTimer = this.time.delayedCall(delay, () => {
+        this.performBossAttack();
+        scheduleNextAttack(); // Schedule next attack
       });
-      
-      // Update UI every second
-      this.time.addEvent({
-        delay: 1000,
-        callback: () => this.updateUI(),
-        loop: true
+    };
+    
+    // Start the attack cycle
+    scheduleNextAttack();
+  }
+
+  private performBossAttack(): void {
+    if (this.playerCurrentHP <= 0) return;
+    
+    const damage = Phaser.Math.Between(
+      GameConstants.BOSS_DAMAGE_MIN,
+      GameConstants.BOSS_DAMAGE_MAX
+    );
+    
+    this.playerCurrentHP = Math.max(0, this.playerCurrentHP - damage);
+    
+    // Show damage number on player
+    if (this.damageNumberPool && this.playerCharacter) {
+      this.damageNumberPool.showDamage(
+        this.playerCharacter.x,
+        this.playerCharacter.y - 30,
+        damage,
+        false, // Not critical
+        '#ff4444' // Red color for boss damage
+      );
+    }
+    
+    // Screen shake for boss attack
+    if (this.cameraEffects) {
+      this.cameraEffects.screenShake(GameConstants.SHAKE_NORMAL);
+    }
+    
+    // Flash screen red
+    if (this.cameraEffects) {
+      this.cameraEffects.flashScreen(0xff0000, 200, 0.3);
+    }
+    
+    console.log(`Boss attacks for ${damage} damage! Player HP: ${this.playerCurrentHP}`);
+  }
+
+  private checkBattleEnd(): void {
+    // Player defeated
+    if (this.playerCurrentHP <= 0) {
+      this.transitionToResults();
+      return;
+    }
+    
+    // Boss defeated
+    if (this.bossCurrentHP <= 0) {
+      this.scene.start('Victory', {
+        sessionDamage: this.sessionDamage,
+        bossName: getCurrentBoss().name
       });
+      return;
     }
   }
 
@@ -481,6 +570,14 @@ export class Battle extends Scene {
 
 
 
+  shutdown(): void {
+    // Clean up boss attack timer
+    if (this.bossAttackTimer) {
+      this.bossAttackTimer.destroy();
+      this.bossAttackTimer = undefined;
+    }
+  }
+
   override update(): void {
     // Update visual effects systems
     this.cameraEffects?.update();
@@ -490,9 +587,10 @@ export class Battle extends Scene {
   }
 
   private updateUI(): void {
-    // Update HP bar
+    const { width, height } = this.scale;
+    
+    // Update Boss HP bar
     if (this.bossHPBar) {
-      const { width } = this.scale;
       const hpPercentage = this.bossCurrentHP / this.bossMaxHP;
       const hpBarWidth = Math.min(width - 40, 400);
       const barWidth = hpBarWidth * hpPercentage;
@@ -502,26 +600,41 @@ export class Battle extends Scene {
       this.bossHPBar.fillRect(width / 2 - hpBarWidth / 2, 40, barWidth, 20);
     }
     
-    // Update HP text
+    // Update Boss HP text
     if (this.bossHPText) {
-      this.bossHPText.setText(`${this.bossCurrentHP.toLocaleString()} / ${this.bossMaxHP.toLocaleString()}`);
+      this.bossHPText.setText(`Boss: ${this.bossCurrentHP.toLocaleString()} / ${this.bossMaxHP.toLocaleString()}`);
     }
 
-    // Update session info display as specified
-    if (this.sessionInfoText && this.sessionSystem) {
-      const sessionState = this.sessionSystem.getSessionState();
-      const timeRemaining = sessionState.timeRemaining;
-      const minutes = Math.floor(timeRemaining / 60);
-      const seconds = timeRemaining % 60;
-      const timeDisplay = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    // Update Player HP bar
+    if (this.playerHPBar) {
+      const hpPercentage = this.playerCurrentHP / this.playerMaxHP;
+      const hpBarWidth = Math.min(width - 40, 300);
+      const barWidth = hpBarWidth * hpPercentage;
       
-      const attacksLeft = Math.max(0, 10 - this.sessionAttackCount); // Max 10 attacks per session
+      this.playerHPBar.clear();
       
-      this.sessionInfoText.setText(
-        `Time: ${timeDisplay}\n` +
-        `Attacks left: ${attacksLeft}\n` +
-        `Current damage: ${this.sessionDamage.toLocaleString()}`
-      );
+      // Color based on HP percentage
+      let barColor = 0x00ff00; // Green
+      if (hpPercentage < 0.5) barColor = 0xffff00; // Yellow
+      if (hpPercentage < 0.25) barColor = 0xff0000; // Red
+      
+      this.playerHPBar.fillStyle(barColor);
+      this.playerHPBar.fillRect(width / 2 - hpBarWidth / 2, height - 130, barWidth, 20);
+    }
+    
+    // Update Player HP text
+    if (this.playerHPText) {
+      this.playerHPText.setText(`Your HP: ${this.playerCurrentHP} / ${this.playerMaxHP}`);
+      
+      // Change color based on HP
+      const hpPercentage = this.playerCurrentHP / this.playerMaxHP;
+      if (hpPercentage < 0.25) {
+        this.playerHPText.setColor('#ff0000');
+      } else if (hpPercentage < 0.5) {
+        this.playerHPText.setColor('#ffff00');
+      } else {
+        this.playerHPText.setColor('#ffffff');
+      }
     }
   }
 

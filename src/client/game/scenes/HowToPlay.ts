@@ -1,5 +1,7 @@
 import { Scene } from 'phaser';
 import { GameConstants } from '../utils/GameConstants';
+import { TransitionSystem } from '../systems/TransitionSystem';
+import { AnimationSystem } from '../systems/AnimationSystem';
 import { MobileUtils } from '../utils/MobileUtils';
 
 /**
@@ -7,6 +9,8 @@ import { MobileUtils } from '../utils/MobileUtils';
  * Explains game mechanics, controls, and objectives
  */
 export class HowToPlay extends Scene {
+  private transitionSystem?: TransitionSystem;
+  private animationSystem?: AnimationSystem;
   private backButton?: Phaser.GameObjects.Container;
   private contentContainer?: Phaser.GameObjects.Container;
 
@@ -14,7 +18,18 @@ export class HowToPlay extends Scene {
     super('HowToPlay');
   }
 
-  create(): void {
+  async create(): Promise<void> {
+    // Setup systems
+    this.transitionSystem = new TransitionSystem(this);
+    this.animationSystem = new AnimationSystem(this);
+    
+    // Smooth transition in
+    await this.transitionSystem.transitionIn({
+      type: 'slide',
+      direction: 'up',
+      duration: GameConstants.TRANSITION_DURATION_NORMAL
+    });
+    
     this.createBackground();
     this.createContent();
     this.createBackButton();
@@ -54,19 +69,24 @@ export class HowToPlay extends Scene {
 
     // Simplified, readable instructions
     const instructions = this.add.text(0, 0,
-      'GOAL:\nDefeat the boss with other players!\n\n' +
+      'GOAL:\nDefeat the daily boss with other players!\n\n' +
 
       'HOW TO PLAY:\n' +
-      '• Choose your class\n' +
-      '• Click ATTACK to fight\n' +
-      '• Click SPECIAL for big damage\n' +
-      '• Energy refills over time\n\n' +
+      '• Choose your character class\n' +
+      '• Attack the boss to deal damage\n' +
+      '• Your HP: 500 vs Boss HP: 50,000\n' +
+      '• Community works together!\n\n' +
 
       'CLASSES:\n' +
-      '• WARRIOR: Strong attacks\n' +
-      '• MAGE: Magic damage\n' +
-      '• ROGUE: Critical hits\n' +
-      '• HEALER: Team support',
+      '• WARRIOR: High damage, balanced\n' +
+      '• MAGE: Very high magic damage\n' +
+      '• ROGUE: 30% critical hit chance\n' +
+      '• HEALER: Support abilities\n\n' +
+
+      'TIPS:\n' +
+      '• Boss attacks back - watch your HP!\n' +
+      '• New boss every day at 8 AM\n' +
+      '• Check leaderboards for rankings',
       {
         fontFamily: 'Arial Black',
         fontSize: MobileUtils.isMobile() ? '18px' : '20px',
@@ -112,8 +132,13 @@ export class HowToPlay extends Scene {
         buttonBg.setFillStyle(GameConstants.COLORS.BUTTON_ENABLED);
         buttonContainer.setScale(1);
       })
-      .on('pointerdown', () => {
-        this.scene.start('Splash');
+      .on('pointerdown', async () => {
+        if (this.animationSystem) {
+          await this.animationSystem.animateButtonPress(buttonContainer);
+        }
+        if (this.transitionSystem) {
+          this.transitionSystem.slideTransition('Splash', 'down');
+        }
       });
 
     this.backButton = buttonContainer;
