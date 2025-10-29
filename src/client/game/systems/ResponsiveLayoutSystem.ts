@@ -67,27 +67,27 @@ export class ResponsiveLayoutSystem {
     
     return {
       portrait: {
-        hudTopHeight: isMobile ? 80 : 100,
-        hudBottomHeight: isMobile ? 120 : 100,
-        battleAreaHeight: isMobile ? 400 : 400,
+        hudTopHeight: isMobile ? 100 : 100,
+        hudBottomHeight: isMobile ? 140 : 100, // Extra space for larger touch buttons
+        battleAreaHeight: isMobile ? 360 : 400, // Adjusted for mobile portrait
         sidebarWidth: 0, // No sidebar in portrait
+        fontSize: {
+          title: isMobile ? '20px' : '24px', // Larger for mobile readability
+          subtitle: isMobile ? '16px' : '18px',
+          body: isMobile ? '14px' : '14px', // Increased for mobile
+          small: isMobile ? '12px' : '12px'
+        }
+      },
+      landscape: {
+        hudTopHeight: isMobile ? 80 : 80,
+        hudBottomHeight: isMobile ? 100 : 100,
+        battleAreaHeight: isMobile ? 320 : 420,
+        sidebarWidth: isMobile ? 120 : 150,
         fontSize: {
           title: isMobile ? '18px' : '24px',
           subtitle: isMobile ? '14px' : '18px',
           body: isMobile ? '12px' : '14px',
           small: isMobile ? '10px' : '12px'
-        }
-      },
-      landscape: {
-        hudTopHeight: isMobile ? 60 : 80,
-        hudBottomHeight: isMobile ? 80 : 100,
-        battleAreaHeight: isMobile ? 320 : 420,
-        sidebarWidth: isMobile ? 120 : 150,
-        fontSize: {
-          title: isMobile ? '16px' : '24px',
-          subtitle: isMobile ? '12px' : '18px',
-          body: isMobile ? '10px' : '14px',
-          small: isMobile ? '8px' : '12px'
         }
       }
     };

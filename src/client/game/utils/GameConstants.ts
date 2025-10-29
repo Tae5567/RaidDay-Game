@@ -10,9 +10,9 @@ export class GameConstants {
   static readonly CHARACTER_SPRITE_SIZE = 32;
   static readonly BOSS_SPRITE_SIZE = 128;
 
-  // Energy system
+  // Energy system - faster for better gameplay
   static readonly MAX_ENERGY = 5;
-  static readonly ENERGY_COOLDOWN_MS = 30000; // 30 seconds
+  static readonly ENERGY_COOLDOWN_MS = 5000; // 5 seconds (much faster)
   static readonly SESSION_REFRESH_MS = 7200000; // 2 hours
 
   // Combat
@@ -22,10 +22,16 @@ export class GameConstants {
   static readonly ROGUE_CRIT_CHANCE = 0.3; // 30%
   static readonly DEFAULT_CRIT_CHANCE = 0.1; // 10%
 
-  // Animation timings
-  static readonly ATTACK_SEQUENCE_DURATION = 1500; // 1.5 seconds
-  static readonly HIT_PAUSE_DURATION = 100; // 0.1 seconds
-  static readonly SCREEN_SHAKE_DURATION = 200; // 0.2 seconds
+  // Animation timings - simplified for 0.8-second attack sequence
+  static readonly ATTACK_SEQUENCE_DURATION = 800; // 0.8 seconds (per requirements 1.2, 1.3, 7.1, 7.2)
+  static readonly SCREEN_SHAKE_DURATION = 150; // 0.15 seconds (shorter for faster sequence)
+  static readonly HIT_PAUSE_DURATION = 50; // 0.05 seconds hit pause for impact feel
+
+  // Scene transition settings
+  static readonly TRANSITION_DURATION_FAST = 400; // Quick transitions
+  static readonly TRANSITION_DURATION_NORMAL = 600; // Standard transitions
+  static readonly TRANSITION_DURATION_SLOW = 800; // Dramatic transitions
+  static readonly LOADING_INDICATOR_DELAY = 200; // Delay before showing loading
 
   // Screen shake intensities
   static readonly SHAKE_NORMAL = 2;
@@ -33,9 +39,15 @@ export class GameConstants {
   static readonly SHAKE_BOSS_PHASE = 8;
 
   // Mobile optimization
-  static readonly MOBILE_MAX_PARTICLES = 20;
+  static readonly MOBILE_MAX_PARTICLES = 10; // Limited to 10 particles on mobile (Requirements 7.2)
   static readonly DESKTOP_MAX_PARTICLES = 50;
-  static readonly MOBILE_TOUCH_TARGET_SIZE = 44; // 44x44 pixels minimum
+  static readonly MOBILE_TOUCH_TARGET_SIZE = 60; // 60x60 pixels minimum (Requirements 6.1)
+  
+  // Performance thresholds
+  static readonly TARGET_FPS = 60;
+  static readonly MIN_MOBILE_FPS = 30;
+  static readonly MIN_DESKTOP_FPS = 45;
+  static readonly PERFORMANCE_CHECK_INTERVAL = 1000; // 1 second
 
   // UI Layout (for 800x600 canvas)
   static readonly HUD_TOP_HEIGHT = 100;

@@ -30,11 +30,13 @@ export class SynchronizationSystem {
   private lastBossSync: BossHPSyncResponse | null = null;
   private lastCommunitySync: CommunityDPSDetailedResponse | null = null;
   private lastPlayerSync: PlayerDataSyncResponse | null = null;
+  private activeFightersCount: number = 0;
   
   // Event callbacks
   private onBossHPSync?: ((data: BossHPSyncResponse) => void) | undefined;
   private onCommunityDPSSync?: ((data: CommunityDPSDetailedResponse) => void) | undefined;
   private onPlayerDataSync?: ((data: PlayerDataSyncResponse) => void) | undefined;
+  private onActiveFightersUpdate?: ((count: number) => void) | undefined;
   private onSyncError?: ((error: string) => void) | undefined;
 
   constructor(scene: Scene) {
@@ -108,11 +110,13 @@ export class SynchronizationSystem {
     onBossHPSync?: ((data: BossHPSyncResponse) => void) | undefined;
     onCommunityDPSSync?: ((data: CommunityDPSDetailedResponse) => void) | undefined;
     onPlayerDataSync?: ((data: PlayerDataSyncResponse) => void) | undefined;
+    onActiveFightersUpdate?: ((count: number) => void) | undefined;
     onSyncError?: ((error: string) => void) | undefined;
   }): void {
     this.onBossHPSync = callbacks.onBossHPSync;
     this.onCommunityDPSSync = callbacks.onCommunityDPSSync;
     this.onPlayerDataSync = callbacks.onPlayerDataSync;
+    this.onActiveFightersUpdate = callbacks.onActiveFightersUpdate;
     this.onSyncError = callbacks.onSyncError;
   }
 
@@ -151,6 +155,14 @@ export class SynchronizationSystem {
       if (data.status === 'success') {
         this.lastBossSync = data;
         
+        // Update active fighters count from boss sync data
+        if (data.activePlayers !== this.activeFightersCount) {
+          this.activeFightersCount = data.activePlayers;
+          if (this.onActiveFightersUpdate) {
+            this.onActiveFightersUpdate(this.activeFightersCount);
+          }
+        }
+        
         // Check for significant changes that need immediate updates
         const hasSignificantChange = this.checkForSignificantBossChanges(data);
         
@@ -163,7 +175,7 @@ export class SynchronizationSystem {
           this.onBossHPSync(data);
         }
         
-        console.log(`SynchronizationSystem: Boss HP synced - ${data.currentHP}/${data.maxHP} (Phase ${data.phase})`);
+        console.log(`SynchronizationSystem: Boss HP synced - ${data.currentHP}/${data.maxHP} (Phase ${data.phase}) - ${data.activePlayers} fighters`);
       } else {
         throw new Error('Boss HP sync returned error status');
       }
@@ -332,6 +344,13 @@ export class SynchronizationSystem {
    */
   public isRunning(): boolean {
     return this.isActive;
+  }
+
+  /**
+   * Get current active fighters count for community stats tracking
+   */
+  public getActiveFightersCount(): number {
+    return this.activeFightersCount;
   }
 
   /**

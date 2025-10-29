@@ -42,7 +42,7 @@ export class LiveLeaderboard {
     this.container.add(header);
 
     // Title
-    const title = this.scene.add.text(width / 2, 40, 'Live Leaderboard', {
+    const title = this.scene.add.text(width / 2, 40, 'Top 10 Leaderboard', {
       fontFamily: 'Arial Black',
       fontSize: '24px',
       color: '#ffffff',
@@ -106,7 +106,7 @@ export class LiveLeaderboard {
   }
 
   private startUpdateTimer(): void {
-    // Update leaderboard every 10 seconds
+    // Update leaderboard every 10 seconds as specified in requirements
     this.updateTimer = this.scene.time.addEvent({
       delay: 10000,
       callback: () => this.fetchLeaderboard(),
@@ -137,12 +137,10 @@ export class LiveLeaderboard {
     const mockData: LeaderboardEntry[] = [];
     const usernames = [
       'DragonSlayer', 'BossHunter99', 'You', 'CritMaster', 'HealBot',
-      'WarriorKing', 'MageSupreme', 'RogueNinja', 'PaladinLight', 'ShadowBlade',
-      'FireMage', 'IceQueen', 'ThunderGod', 'EarthShaker', 'WindWalker',
-      'DarkKnight', 'LightBringer', 'VoidHunter', 'StarGazer', 'MoonDancer'
+      'WarriorKing', 'MageSupreme', 'RogueNinja', 'PaladinLight', 'ShadowBlade'
     ];
 
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 10; i++) { // Only top 10 as per requirements
       mockData.push({
         userId: `user${i + 1}`,
         username: usernames[i],
@@ -160,7 +158,7 @@ export class LiveLeaderboard {
   }
 
   private updateLeaderboard(entries: LeaderboardEntry[], currentUserRank?: number): void {
-    this.leaderboardEntries = entries.slice(0, 20); // Top 20
+    this.leaderboardEntries = entries.slice(0, 10); // Top 10 as specified in requirements
     this.currentUserRank = currentUserRank;
     
     if (this.isVisible) {
@@ -188,76 +186,99 @@ export class LiveLeaderboard {
   private createLeaderboardEntry(entry: LeaderboardEntry, y: number, width: number): Phaser.GameObjects.Container {
     const container = this.scene.add.container(0, y);
     
-    // Highlight current user
+    // Enhanced highlighting for current user with special styling as per requirements
     const isCurrentUser = entry.username === 'You' || entry.rank === this.currentUserRank;
-    const bgColor = isCurrentUser ? 0x444400 : (entry.rank <= 3 ? 0x333333 : 0x222222);
+    const bgColor = isCurrentUser ? 0x555500 : (entry.rank <= 3 ? 0x333333 : 0x222222);
     const textColor = isCurrentUser ? '#ffff00' : '#ffffff';
 
-    // Background
+    // Background with enhanced styling for current user
     const bg = this.scene.add.graphics();
-    bg.fillStyle(bgColor, 0.8);
+    bg.fillStyle(bgColor, isCurrentUser ? 0.9 : 0.8);
     bg.fillRect(10, -15, width - 20, 30);
+    
     if (isCurrentUser) {
-      bg.lineStyle(2, 0xffff00, 0.8);
+      // Special border and glow effect for current user
+      bg.lineStyle(3, 0xffff00, 1.0);
       bg.strokeRect(10, -15, width - 20, 30);
+      
+      // Add pulsing glow effect
+      this.scene.tweens.add({
+        targets: bg,
+        alpha: 0.7,
+        duration: 1000,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut'
+      });
     }
     container.add(bg);
 
     // Rank with special styling for top 3
     let rankText = `${entry.rank}`;
     let rankColor = textColor;
+    let rankFontSize = '14px';
     
     if (entry.rank === 1) {
       rankText = '🥇';
+      rankFontSize = '16px';
     } else if (entry.rank === 2) {
       rankText = '🥈';
+      rankFontSize = '16px';
     } else if (entry.rank === 3) {
       rankText = '🥉';
+      rankFontSize = '16px';
     }
 
     const rank = this.scene.add.text(30, 0, rankText, {
       fontFamily: 'Arial Black',
-      fontSize: '14px',
+      fontSize: rankFontSize,
       color: rankColor,
     }).setOrigin(0, 0.5);
     container.add(rank);
 
-    // Avatar placeholder
+    // Avatar placeholder with class-specific colors
     const avatar = this.scene.add.circle(70, 0, 10, this.getClassColor(entry.characterClass));
-    avatar.setStrokeStyle(2, 0xffffff);
+    avatar.setStrokeStyle(2, isCurrentUser ? 0xffff00 : 0xffffff);
     container.add(avatar);
 
-    // Username
-    const username = this.scene.add.text(90, -5, entry.redditUsername || entry.username || 'Unknown', {
-      fontFamily: 'Arial',
-      fontSize: '12px',
+    // Username with enhanced styling for current user
+    const usernameStyle: Phaser.Types.GameObjects.Text.TextStyle = {
+      fontFamily: isCurrentUser ? 'Arial Black' : 'Arial',
+      fontSize: isCurrentUser ? '13px' : '12px',
       color: textColor,
-    }).setOrigin(0, 0.5);
+    };
+    
+    if (isCurrentUser) {
+      usernameStyle.stroke = '#000000';
+      usernameStyle.strokeThickness = 2;
+    }
+    
+    const username = this.scene.add.text(90, -5, entry.redditUsername || entry.username || 'Unknown', usernameStyle).setOrigin(0, 0.5);
     container.add(username);
 
     // Class and level
     const classLevel = this.scene.add.text(90, 8, `Lv.${entry.level} ${this.capitalizeFirst(entry.characterClass)}`, {
       fontFamily: 'Arial',
       fontSize: '10px',
-      color: '#cccccc',
+      color: isCurrentUser ? '#ffff88' : '#cccccc',
     }).setOrigin(0, 0.5);
     container.add(classLevel);
 
-    // Session damage
-    const damage = this.scene.add.text(width - 30, -5, entry.sessionDamage.toLocaleString(), {
+    // Total damage (main metric) - show username, total damage, and current rank as per requirements
+    const damage = this.scene.add.text(width - 30, -5, entry.totalDamage.toLocaleString(), {
       fontFamily: 'Arial Black',
-      fontSize: '12px',
-      color: '#00ff00',
+      fontSize: isCurrentUser ? '13px' : '12px',
+      color: isCurrentUser ? '#00ff88' : '#00ff00',
     }).setOrigin(1, 0.5);
     container.add(damage);
 
-    // Total damage
-    const totalDamage = this.scene.add.text(width - 30, 8, `Total: ${entry.totalDamage.toLocaleString()}`, {
+    // Session damage (secondary metric)
+    const sessionDamage = this.scene.add.text(width - 30, 8, `Session: ${entry.sessionDamage.toLocaleString()}`, {
       fontFamily: 'Arial',
       fontSize: '10px',
       color: '#888888',
     }).setOrigin(1, 0.5);
-    container.add(totalDamage);
+    container.add(sessionDamage);
 
     return container;
   }

@@ -1,118 +1,105 @@
-import { CharacterClass, AttackResult } from '../entities/PlayerCharacter';
-import { GameConstants } from './GameConstants';
+import { CharacterClass } from '../entities/PlayerCharacter';
 
 /**
- * DamageCalculator - Utility class for damage calculations
- * Centralizes all damage-related math and formulas
+ * Simplified DamageCalculator for Raid Day
+ * Focuses on simple damage ranges with minimal class differences
+ * Removes complex energy/cooldown mechanics per requirements 5.3, 5.4, 5.5
  */
 export class DamageCalculator {
-  private static readonly CLASS_BASE_DAMAGE = {
-    [CharacterClass.WARRIOR]: 120,
-    [CharacterClass.MAGE]: 100,
-    [CharacterClass.ROGUE]: 90,
-    [CharacterClass.HEALER]: 80
+  // Base damage ranges by class (minimal differences per requirement 5.2)
+  private static readonly CLASS_DAMAGE_RANGES = {
+    [CharacterClass.WARRIOR]: { min: 180, max: 220 },
+    [CharacterClass.MAGE]: { min: 170, max: 230 }, 
+    [CharacterClass.ROGUE]: { min: 160, max: 240 },
+    [CharacterClass.HEALER]: { min: 175, max: 225 }
   };
 
-  public static calculateBaseDamage(
+  /**
+   * Calculate damage with simplified mechanics
+   * @param playerClass Character class
+   * @param playerLevel Player level for scaling
+   * @returns Calculated damage amount
+   */
+  public static calculateDamage(
     playerClass: CharacterClass,
-    playerLevel: number
+    playerLevel: number = 1
   ): number {
-    const baseDamage = this.CLASS_BASE_DAMAGE[playerClass];
-    return baseDamage * (1 + playerLevel * 0.05);
-  }
-
-  public static applyModifiers(
-    baseDamage: number,
-    hasFullEnergy: boolean,
-    bossPhase: number,
-    isCritical: boolean
-  ): number {
-    let damage = baseDamage;
-
-    // Full energy bonus
-    if (hasFullEnergy) {
-      damage *= GameConstants.FULL_ENERGY_BONUS;
-    }
-
-    // Boss phase resistance
-    if (bossPhase === 2) {
-      damage *= GameConstants.PHASE2_RESISTANCE;
-    }
-
-    // Critical hit multiplier
-    if (isCritical) {
-      damage *= GameConstants.CRIT_MULTIPLIER;
-    }
-
-    // RNG variance ±10%
-    damage *= this.randomFloat(0.9, 1.1);
-
+    const range = this.CLASS_DAMAGE_RANGES[playerClass];
+    
+    // Random damage within class range
+    let damage = this.randomInt(range.min, range.max);
+    
+    // Simple level scaling (2% per level)
+    damage *= (1 + playerLevel * 0.02);
+    
+    // Random variance ±15% for variety
+    damage *= this.randomFloat(0.85, 1.15);
+    
     return Math.floor(damage);
   }
 
-  public static rollCritical(playerClass: CharacterClass): boolean {
-    const critChance = playerClass === CharacterClass.ROGUE 
-      ? GameConstants.ROGUE_CRIT_CHANCE 
-      : GameConstants.DEFAULT_CRIT_CHANCE;
-    
-    return Math.random() < critChance;
-  }
-
-  public static calculateSpecialDamage(
-    playerClass: CharacterClass,
-    playerLevel: number,
-    bossPhase: number
-  ): number {
-    const baseDamage = this.calculateBaseDamage(playerClass, playerLevel) * 3; // 3x for special
-    
-    // Special abilities are always critical (especially Rogue backstab)
-    const isCritical = true;
-    
-    return this.applyModifiers(baseDamage, false, bossPhase, isCritical);
+  /**
+   * Roll for critical hit (simplified)
+   * @param _playerClass Character class (unused - all classes have same crit chance)
+   * @returns Whether attack is critical
+   */
+  public static rollCritical(_playerClass: CharacterClass): boolean {
+    // Simple 15% crit chance for all classes
+    return Math.random() < 0.15;
   }
 
   /**
-   * Calculate special damage with class-specific bonuses
+   * Apply critical hit multiplier
+   * @param damage Base damage
+   * @param isCritical Whether hit is critical
+   * @returns Modified damage
    */
-  public static calculateEnhancedSpecialDamage(
+  public static applyCritical(damage: number, isCritical: boolean): number {
+    return isCritical ? Math.floor(damage * 2.0) : damage; // 2x for crits
+  }
+
+  /**
+   * Calculate complete attack damage (main method)
+   * @param playerClass Character class
+   * @param playerLevel Player level
+   * @returns Attack result with damage and crit status
+   */
+  public static calculateAttack(
     playerClass: CharacterClass,
-    playerLevel: number,
-    bossPhase: number
-  ): { damage: number; isCritical: boolean; effects: string[] } {
-    let baseDamage = this.calculateBaseDamage(playerClass, playerLevel) * 3;
-    let isCritical = true;
-    const effects: string[] = [];
-
-    // Class-specific enhancements
-    switch (playerClass) {
-      case CharacterClass.WARRIOR:
-        // Triple hit combo - each hit does normal special damage
-        effects.push('triple_hit');
-        break;
-      case CharacterClass.MAGE:
-        // Fireball explosion with area effect
-        baseDamage *= 1.1; // 10% bonus for explosion
-        effects.push('explosion', 'screen_shake');
-        break;
-      case CharacterClass.ROGUE:
-        // Guaranteed critical with backstab bonus
-        baseDamage *= 1.2; // 20% backstab bonus
-        effects.push('guaranteed_critical', 'teleport');
-        break;
-      case CharacterClass.HEALER:
-        // Lower damage but community buff
-        baseDamage *= 0.8; // 20% less damage
-        effects.push('community_buff');
-        break;
-    }
-
-    const finalDamage = this.applyModifiers(baseDamage, false, bossPhase, isCritical);
+    playerLevel: number = 1
+  ): { damage: number; isCritical: boolean } {
+    const baseDamage = this.calculateDamage(playerClass, playerLevel);
+    const isCritical = this.rollCritical(playerClass);
+    const finalDamage = this.applyCritical(baseDamage, isCritical);
     
     return {
       damage: finalDamage,
-      isCritical,
-      effects
+      isCritical
     };
+  }
+
+  /**
+   * Get damage range for display purposes
+   * @param playerClass Character class
+   * @param playerLevel Player level
+   * @returns Min and max damage range
+   */
+  public static getDamageRange(
+    playerClass: CharacterClass,
+    playerLevel: number = 1
+  ): { min: number; max: number } {
+    const range = this.CLASS_DAMAGE_RANGES[playerClass];
+    const levelMultiplier = (1 + playerLevel * 0.02);
+    
+    return {
+      min: Math.floor(range.min * levelMultiplier * 0.85), // With variance
+      max: Math.floor(range.max * levelMultiplier * 1.15)
+    };
+  }
+
+  // Utility methods
+  private static randomInt(min: number, max: number): number {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
   }
 
   private static randomFloat(min: number, max: number): number {

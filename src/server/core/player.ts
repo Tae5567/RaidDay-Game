@@ -8,11 +8,11 @@ export enum CharacterClass {
 }
 
 export interface EnergyState {
-  current: number;        // 0-5 energy points
+  current: number;        // 0-5 energy points (simplified for 2-minute sessions)
   max: number;           // Always 5
-  cooldowns: number[];   // Per-point cooldown timers (30s each)
-  lastRefresh: number;   // Server-side 2-hour gate
-  sessionStart: number;  // Track session duration
+  cooldowns: number[];   // Per-point cooldown timers (simplified)
+  lastRefresh: number;   // Session start time
+  sessionStart: number;  // Track 2-minute session duration
 }
 
 export interface PlayerData {
@@ -20,12 +20,13 @@ export interface PlayerData {
   characterClass: CharacterClass;
   level: number;
   experience: number;
-  sessionDamage: number;
-  totalDamage: number;
-  lastEnergyRefresh: number;
-  energyState: EnergyState;
+  sessionDamage: number;      // Damage dealt in current 2-minute session
+  totalDamage: number;        // Total damage across all sessions
+  lastEnergyRefresh: number;  // Last session start time
+  energyState: EnergyState;   // Simplified energy for 2-minute sessions
   specialAbilityUsed: boolean;
   lastActiveTime: number;
+  sessionAttackCount: number; // Track 5-10 attacks per session
 }
 
 export interface LeaderboardEntry {
@@ -81,14 +82,15 @@ export class PlayerManager {
       totalDamage: 0,
       lastEnergyRefresh: Date.now(),
       energyState: {
-        current: 5,
-        max: 5,
-        cooldowns: [0, 0, 0, 0, 0],
+        current: 10, // Start with 10 attacks for 2-minute session
+        max: 10,
+        cooldowns: [],
         lastRefresh: Date.now(),
         sessionStart: Date.now()
       },
       specialAbilityUsed: false,
-      lastActiveTime: Date.now()
+      lastActiveTime: Date.now(),
+      sessionAttackCount: 0
     };
 
     await redis.set(playerKey, JSON.stringify(newPlayer));
@@ -108,49 +110,30 @@ export class PlayerManager {
   }
 
   /**
-   * Update energy state after attack
+   * Update energy state after attack (simplified for 2-minute sessions)
    */
   public static async consumeEnergy(postId: string, userId: string): Promise<{ success: boolean; energyState: EnergyState }> {
     const playerData = await this.getPlayerData(postId, userId);
     const now = Date.now();
 
-    // Update cooldowns first
-    const energyState = playerData.energyState;
-    if (!energyState) {
-      return { success: false, energyState: { current: 0, max: 5, cooldowns: [0, 0, 0, 0, 0], lastRefresh: now, sessionStart: now } };
-    }
+    // Check if 2-minute session has expired
+    const sessionDuration = now - playerData.energyState.sessionStart;
+    const twoMinutes = 2 * 60 * 1000; // 2 minutes in milliseconds
     
-    const cooldowns = energyState.cooldowns || [0, 0, 0, 0, 0];
-    for (let i = 0; i < cooldowns.length; i++) {
-      const currentCooldown = cooldowns[i];
-      if (currentCooldown && currentCooldown > 0) {
-        const timeElapsed = now - energyState.lastRefresh;
-        cooldowns[i] = Math.max(0, currentCooldown - timeElapsed);
-        
-        // Restore energy point if cooldown is complete
-        if (cooldowns[i] === 0 && energyState.current < (energyState.max || 5)) {
-          energyState.current++;
-        }
-      }
+    if (sessionDuration >= twoMinutes) {
+      // Session expired, need to refresh
+      return { success: false, energyState: playerData.energyState };
     }
-    energyState.cooldowns = cooldowns;
 
-    // Check if player has energy to spend
+    // Check if player has attacks remaining (5-10 attacks per session)
     if (!playerData.energyState || playerData.energyState.current <= 0) {
-      return { success: false, energyState: playerData.energyState || { current: 0, max: 5, cooldowns: [0, 0, 0, 0, 0], lastRefresh: now, sessionStart: now } };
+      return { success: false, energyState: playerData.energyState || { current: 0, max: 10, cooldowns: [], lastRefresh: now, sessionStart: now } };
     }
 
-    // Consume energy and start cooldown (30 seconds)
-    if (playerData.energyState) {
-      playerData.energyState.current--;
-      const energyIndex = playerData.energyState.current; // Use the slot that was just emptied
-      if (playerData.energyState.cooldowns && energyIndex >= 0 && energyIndex < playerData.energyState.cooldowns.length) {
-        playerData.energyState.cooldowns[energyIndex] = 30000; // 30 seconds in milliseconds
-      }
-    }
-    if (playerData.energyState) {
-      playerData.energyState.lastRefresh = now;
-    }
+    // Consume one attack from session
+    playerData.energyState.current--;
+    playerData.sessionAttackCount++;
+    playerData.energyState.lastRefresh = now;
     playerData.lastActiveTime = now;
 
     await redis.set(this.getPlayerKey(postId, userId), JSON.stringify(playerData));
@@ -158,18 +141,20 @@ export class PlayerManager {
   }
 
   /**
-   * Check if 2-hour session refresh is available
+   * Check if new 2-minute session can be started
    */
   public static async canRefreshSession(postId: string, userId: string): Promise<boolean> {
     const playerData = await this.getPlayerData(postId, userId);
-    const twoHours = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
-    const timeSinceLastRefresh = Date.now() - playerData.lastEnergyRefresh;
+    const now = Date.now();
+    const sessionDuration = now - playerData.energyState.sessionStart;
+    const twoMinutes = 2 * 60 * 1000; // 2 minutes in milliseconds
     
-    return timeSinceLastRefresh >= twoHours;
+    // Can refresh if 2 minutes have passed or no attacks remaining
+    return sessionDuration >= twoMinutes || playerData.energyState.current <= 0;
   }
 
   /**
-   * Refresh player session (2-hour cooldown)
+   * Start new 2-minute session
    */
   public static async refreshSession(postId: string, userId: string): Promise<{ success: boolean; playerData?: PlayerData }> {
     if (!(await this.canRefreshSession(postId, userId))) {
@@ -179,16 +164,17 @@ export class PlayerManager {
     const playerData = await this.getPlayerData(postId, userId);
     const now = Date.now();
 
-    // Reset energy and session data
+    // Reset session data for new 2-minute session
     playerData.energyState = {
-      current: 5,
-      max: 5,
-      cooldowns: [0, 0, 0, 0, 0],
+      current: 10, // 5-10 attacks per session
+      max: 10,
+      cooldowns: [],
       lastRefresh: now,
       sessionStart: now
     };
     playerData.lastEnergyRefresh = now;
-    playerData.sessionDamage = 0;
+    playerData.sessionDamage = 0; // Reset session damage
+    playerData.sessionAttackCount = 0;
     playerData.specialAbilityUsed = false;
     playerData.lastActiveTime = now;
 
@@ -264,16 +250,23 @@ export class PlayerManager {
   }
 
   /**
-   * Update leaderboard with player data
+   * Update leaderboard with player data using Redis sorted sets
    */
   private static async updateLeaderboard(postId: string, userId: string, playerData: PlayerData): Promise<void> {
     const leaderboardKey = this.getLeaderboardKey(postId);
     
-    // Store player score for leaderboard (using session damage as primary metric)
+    // Store player score for daily leaderboard (using session damage as primary metric)
     await redis.zAdd(leaderboardKey, {
       member: userId,
       score: playerData.sessionDamage
     });
+    
+    // Set expiration for daily reset (24 hours)
+    const tomorrow8AM = new Date();
+    tomorrow8AM.setDate(tomorrow8AM.getDate() + 1);
+    tomorrow8AM.setHours(8, 0, 0, 0);
+    
+    await redis.expire(leaderboardKey, Math.floor((tomorrow8AM.getTime() - Date.now()) / 1000));
   }
 
   /**
@@ -325,26 +318,26 @@ export class PlayerManager {
     const playerData = await this.getPlayerData(postId, userId);
     const sessionStatsKey = this.getSessionStatsKey(postId, userId);
     
-    // Get additional session stats (attack count, critical hits)
+    // Get additional session stats (critical hits)
     const sessionData = await redis.get(sessionStatsKey);
-    const stats = sessionData ? JSON.parse(sessionData) : { attackCount: 0, criticalHits: 0 };
+    const stats = sessionData ? JSON.parse(sessionData) : { criticalHits: 0 };
     
-    // Get player rank from leaderboard
+    // Get player rank from leaderboard using Redis sorted sets
     const leaderboardKey = this.getLeaderboardKey(postId);
     let playerRank = 0;
     
     try {
-      // Use a simplified ranking approach since zRevRank is not available
+      // Get all scores in descending order to find rank
       const allScores = await redis.zRange(leaderboardKey, 0, -1, { by: 'rank', reverse: true });
-      const rank = allScores.findIndex(entry => entry.member === userId);
-      playerRank = rank !== null ? rank + 1 : 0;
+      const rankIndex = allScores.findIndex(entry => entry.member === userId);
+      playerRank = rankIndex !== -1 ? rankIndex + 1 : 0;
     } catch (error) {
       console.error('Error getting player rank:', error);
     }
 
     return {
       sessionDamage: playerData.sessionDamage,
-      attackCount: stats.attackCount || 0,
+      attackCount: playerData.sessionAttackCount, // Use tracked attack count
       criticalHits: stats.criticalHits || 0,
       specialAbilityUsed: playerData.specialAbilityUsed,
       sessionStartTime: playerData.energyState.sessionStart,

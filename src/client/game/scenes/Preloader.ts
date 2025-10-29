@@ -91,8 +91,9 @@ export class Preloader extends Scene {
     this.load.image('boss_referee', 'sprites/boss_referee.png');
     this.load.image('boss_cringe', 'sprites/boss_cringe.png');
 
-    // Load background image
-    this.load.image('battle_background', 'backgrounds/castle_arena.png');
+    // Load background images
+    this.load.image('castle_arena', 'backgrounds/castle_arena.png');
+    this.load.image('background', 'backgrounds/background.png');
 
     // Load audio files (placeholder - will be implemented in future tasks)
     // this.load.audio('attack_sound', 'sounds/attack.wav');
@@ -116,48 +117,109 @@ export class Preloader extends Scene {
   private createFallbackSprites(): void {
     const graphics = this.add.graphics();
 
-    // Character sprites - only create if image failed to load
-    const characterClasses = ['warrior', 'mage', 'rogue', 'healer'];
-    const characterColors = [0xff4444, 0x4444ff, 0x44ff44, 0xffff44];
-
-    characterClasses.forEach((className, index) => {
-      if (!this.textures.exists(className)) {
-        console.log(`Creating fallback sprite for ${className}`);
-        graphics.clear();
-        graphics.fillStyle(characterColors[index] || 0xffffff);
-        graphics.fillCircle(32, 32, 24);
-        graphics.fillStyle(0xffffff);
-        graphics.fillRect(28, 28, 8, 8);
-        graphics.generateTexture(className, 64, 64);
-      }
-    });
-
-    // Boss sprites - only create if image failed to load
-    const bossNames = [
-      'boss_lag_spike', 'boss_algorithm', 'boss_influencer', 
-      'boss_deadline', 'boss_spoiler', 'boss_referee', 'boss_cringe'
+    // Character sprites - create detailed fallback sprites
+    const characterData = [
+      { name: 'warrior', color: 0xff6666, symbol: '⚔️' },
+      { name: 'mage', color: 0x6666ff, symbol: '🔮' },
+      { name: 'rogue', color: 0x66ff66, symbol: '🗡️' },
+      { name: 'healer', color: 0xffff66, symbol: '✚' }
     ];
-    const bossColors = [0xff0000, 0x00ff00, 0xff69b4, 0xffff00, 0x800080, 0x000000, 0xffa500];
 
-    bossNames.forEach((bossName, index) => {
-      if (!this.textures.exists(bossName)) {
-        console.log(`Creating fallback sprite for ${bossName}`);
+    characterData.forEach((char) => {
+      if (!this.textures.exists(char.name)) {
+        console.log(`Creating fallback sprite for ${char.name}`);
         graphics.clear();
-        graphics.fillStyle(bossColors[index % bossColors.length] || 0xff0000);
-        graphics.fillCircle(96, 96, 80);
-        graphics.fillStyle(0xffffff);
-        graphics.fillRect(80, 80, 32, 32);
-        graphics.generateTexture(bossName, 192, 192);
+        
+        // Body
+        graphics.fillStyle(char.color);
+        graphics.fillCircle(32, 32, 20);
+        graphics.lineStyle(2, 0x000000);
+        graphics.strokeCircle(32, 32, 20);
+        
+        // Class-specific details
+        switch (char.name) {
+          case 'warrior':
+            // Sword
+            graphics.lineStyle(3, 0x888888);
+            graphics.lineBetween(17, 22, 7, 12);
+            graphics.fillStyle(0xffaa00);
+            graphics.fillCircle(7, 12, 3);
+            break;
+          case 'mage':
+            // Staff
+            graphics.lineStyle(2, 0x8B4513);
+            graphics.lineBetween(47, 22, 47, 7);
+            graphics.fillStyle(0x4444ff);
+            graphics.fillCircle(47, 7, 4);
+            break;
+          case 'rogue':
+            // Daggers
+            graphics.lineStyle(2, 0x666666);
+            graphics.lineBetween(20, 24, 14, 17);
+            graphics.lineBetween(44, 24, 50, 17);
+            break;
+          case 'healer':
+            // Cross
+            graphics.lineStyle(3, 0x00ff00);
+            graphics.lineBetween(32, 17, 32, 27);
+            graphics.lineBetween(27, 22, 37, 22);
+            break;
+        }
+        
+        graphics.generateTexture(char.name, 64, 64);
       }
     });
 
-    // Background fallback
-    if (!this.textures.exists('battle_background')) {
-      console.log('Creating fallback background');
+    // Boss sprites - create detailed fallback sprites
+    const bossData = [
+      { name: 'boss_lag_spike', color: 0xff0000, size: 80 },
+      { name: 'boss_algorithm', color: 0x00ff00, size: 80 },
+      { name: 'boss_influencer', color: 0xff69b4, size: 80 },
+      { name: 'boss_deadline', color: 0xffff00, size: 80 },
+      { name: 'boss_spoiler', color: 0x800080, size: 80 },
+      { name: 'boss_referee', color: 0x000000, size: 80 },
+      { name: 'boss_cringe', color: 0xffa500, size: 80 }
+    ];
+
+    bossData.forEach((boss) => {
+      if (!this.textures.exists(boss.name)) {
+        console.log(`Creating fallback sprite for ${boss.name}`);
+        graphics.clear();
+        
+        // Main body
+        graphics.fillStyle(boss.color);
+        graphics.fillCircle(96, 96, boss.size);
+        graphics.lineStyle(4, 0x000000);
+        graphics.strokeCircle(96, 96, boss.size);
+        
+        // Eyes
+        graphics.fillStyle(0xff0000);
+        graphics.fillCircle(80, 80, 8);
+        graphics.fillCircle(112, 80, 8);
+        
+        // Mouth
+        graphics.lineStyle(4, 0x000000);
+        graphics.arc(96, 110, 20, 0, Math.PI);
+        
+        graphics.generateTexture(boss.name, 192, 192);
+      }
+    });
+
+    // Background fallbacks
+    if (!this.textures.exists('castle_arena')) {
+      console.log('Creating fallback castle_arena background');
       graphics.clear();
       graphics.fillGradientStyle(0x1a1a2e, 0x4a4a8e, 0x1a1a2e, 0x4a4a8e);
       graphics.fillRect(0, 0, 800, 600);
-      graphics.generateTexture('battle_background', 800, 600);
+      graphics.generateTexture('castle_arena', 800, 600);
+    }
+    
+    if (!this.textures.exists('background')) {
+      console.log('Creating fallback background');
+      graphics.clear();
+      graphics.fillGradientStyle(0x2a2a4e, 0x5a5a9e, 0x2a2a4e, 0x5a5a9e);
+      graphics.fillRect(0, 0, 800, 600);
+      graphics.generateTexture('background', 800, 600);
     }
 
     graphics.destroy();

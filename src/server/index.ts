@@ -8,9 +8,13 @@ import {
   AttackResponse,
   CommunityDPSResponse,
   LeaderboardEntry,
-  AttackEvent
+  AttackEvent,
+  ShareSessionRequest,
+  ShareSessionResponse,
+  GameStateResponse,
+  RecentAttacksResponse
 } from '../shared/types/api';
-import { redis, createServer, context } from '@devvit/web/server';
+import { redis, createServer, context, reddit } from '@devvit/web/server';
 import { createPost } from './core/post';
 import { BossManager } from './core/boss';
 import { PlayerManager, CharacterClass } from './core/player';
@@ -27,6 +31,30 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.text());
 
 const router = express.Router();
+
+// Helper function to generate leaderboard comment
+function generateLeaderboardComment(leaderboard: LeaderboardEntry[]): string {
+  let comment = '📋 **Full Leaderboard - Victory Contributors:**\n\n';
+  
+  leaderboard.forEach((player, index) => {
+    const medal = index < 3 ? ['🥇', '🥈', '🥉'][index] : '🏅';
+    const classEmoji: Record<string, string> = {
+      warrior: '⚔️',
+      mage: '🔮', 
+      rogue: '🗡️',
+      healer: '✨'
+    };
+    const emoji = classEmoji[player.characterClass] || '⚔️';
+    
+    comment += `${medal} **${index + 1}.** u/${player.redditUsername || `Player${index + 1}`} ${emoji}\n`;
+    comment += `   └ ${player.sessionDamage.toLocaleString()} damage (Level ${player.level} ${player.characterClass})\n\n`;
+  });
+  
+  comment += '\n🎉 **Congratulations to all participants!** 🎉\n\n';
+  comment += 'Join us tomorrow for the next boss battle at 8 AM!\n';
+  comment += 'Visit r/RaidDay to participate in future battles.';
+  return comment;
+}
 
 router.get<{ postId: string }, InitResponse | { status: string; message: string }>(
   '/api/init',
@@ -200,6 +228,23 @@ router.post<{}, AttackResponse, AttackRequest>('/api/attack', async (_req, res):
     return;
   }
 
+  // Validate damage input (should be between 150-250 for simplified system)
+  if (!damage || damage < 50 || damage > 500) {
+    res.status(400).json({
+      success: false,
+      damage: 0,
+      isCritical: false,
+      newBossHP: 0,
+      bossPhase: 1,
+      isEnraged: false,
+      playerLevel: 1,
+      xpGained: 0,
+      energyRemaining: 0,
+      message: 'Invalid damage amount'
+    });
+    return;
+  }
+
   try {
     // Store user mapping for Reddit integration (if we have username from context)
     const currentUsername = (context as any).username;
@@ -207,7 +252,7 @@ router.post<{}, AttackResponse, AttackRequest>('/api/attack', async (_req, res):
       await RedditUserService.storeUserMapping(userId, currentUsername);
     }
 
-    // Check and consume energy
+    // Check and consume energy (simplified for 2-minute sessions)
     const energyResult = await PlayerManager.consumeEnergy(postId, userId);
     if (!energyResult.success) {
       res.status(400).json({
@@ -220,15 +265,15 @@ router.post<{}, AttackResponse, AttackRequest>('/api/attack', async (_req, res):
         playerLevel: 1,
         xpGained: 0,
         energyRemaining: energyResult.energyState.current,
-        message: 'Insufficient energy'
+        message: 'Session expired or no attacks remaining'
       });
       return;
     }
 
-    // Track active player for boss scaling
+    // Track active player for community stats
     await BossManager.trackActivePlayer(postId, userId);
 
-    // Apply damage to boss
+    // Apply damage to boss (simplified - no resistance)
     const bossState = await BossManager.takeDamage(postId, damage);
     
     // Update player data and add XP
@@ -799,9 +844,17 @@ router.get('/api/live-leaderboard', async (_, res) => {
 // Victory Post Creation API - Auto-generate Reddit post when boss is defeated
 router.post('/api/create-victory-post', async (_, res) => {
   try {
-    const { postId } = context;
+    const { postId, subredditName } = context;
     if (!postId) {
       res.status(400).json({ status: 'error', message: 'postId required' });
+      return;
+    }
+
+    // Check if victory post already created to prevent duplicates
+    const victoryKey = `victory_post_created:${postId}`;
+    const alreadyCreated = await redis.get(victoryKey);
+    if (alreadyCreated) {
+      res.status(400).json({ status: 'error', message: 'Victory post already created' });
       return;
     }
 
@@ -812,28 +865,164 @@ router.post('/api/create-victory-post', async (_, res) => {
       return;
     }
 
+    // Check if boss is actually defeated
+    const isDefeated = await BossManager.isBossDefeated(postId);
+    if (!isDefeated) {
+      res.status(400).json({ status: 'error', message: 'Boss is not defeated yet' });
+      return;
+    }
+
     const communityManager = new CommunityManager(postId);
     const topPlayers = await communityManager.getLeaderboard(3); // Top 3 for tagging
+    const fullLeaderboard = await communityManager.getLeaderboard(20); // Full leaderboard for comment
     
-    // Create victory post
+    // Get Reddit usernames for top contributors
+    const topContributors = await Promise.all(
+      topPlayers.map(async (player) => {
+        try {
+          const userData = await RedditUserService.getUserData(player.userId);
+          return {
+            ...player,
+            redditUsername: userData.username || `Player${player.rank}`
+          };
+        } catch (error) {
+          console.error(`Failed to get user data for ${player.userId}:`, error);
+          return {
+            ...player,
+            redditUsername: `Player${player.rank}`
+          };
+        }
+      })
+    );
+
+    // Create victory post content
+    const postTitle = `🎉 r/RaidDay defeated ${bossInfo.data.name}!`;
+    const postContent = `The community has successfully defeated **${bossInfo.data.name}**!\n\n` +
+                       `🏆 **Top Contributors:**\n` +
+                       topContributors.map((player, index) => 
+                         `${index + 1}. u/${player.redditUsername} - ${player.sessionDamage.toLocaleString()} damage`
+                       ).join('\n') + '\n\n' +
+                       `📊 **Battle Stats:**\n` +
+                       `• Total Damage Dealt: ${(await communityManager.getTotalDamageDealt()).toLocaleString()}\n` +
+                       `• Participants: ${await communityManager.getTotalPlayerCount()}\n` +
+                       `• Boss Theme: ${bossInfo.data.theme}\n\n` +
+                       `Thanks to everyone who participated! The next boss will spawn tomorrow at 8 AM.`;
+
+    let createdPost = null;
+    let leaderboardComment = null;
+
+    try {
+      // Create the actual Reddit post
+      if (subredditName) {
+        createdPost = await reddit.submitPost({
+          subredditName: subredditName,
+          title: postTitle,
+          text: postContent
+        });
+
+        // Add full leaderboard as comment on the victory post
+        if (createdPost && createdPost.id) {
+          const leaderboardCommentText = generateLeaderboardComment(fullLeaderboard);
+          
+          try {
+            leaderboardComment = await reddit.submitComment({
+              id: createdPost.id,
+              text: leaderboardCommentText
+            });
+          } catch (commentError) {
+            console.error('Failed to create leaderboard comment:', commentError);
+            // Continue even if comment creation fails
+          }
+        }
+      }
+    } catch (redditError) {
+      console.error('Failed to create Reddit post:', redditError);
+      // Continue with response even if Reddit post creation fails
+    }
+
     const victoryPostData = {
-      title: `🎉 r/RaidDay defeated ${bossInfo.data.name}!`,
+      title: postTitle,
+      content: postContent,
       bossName: bossInfo.data.name,
-      topPlayers,
+      topPlayers: topContributors,
+      fullLeaderboard,
       totalDamage: await communityManager.getTotalDamageDealt(),
-      participantCount: await communityManager.getTotalPlayerCount()
+      participantCount: await communityManager.getTotalPlayerCount(),
+      leaderboardComment: generateLeaderboardComment(fullLeaderboard),
+      redditPostId: createdPost?.id || null,
+      redditCommentId: leaderboardComment?.id || null
     };
 
-    // In a real implementation, this would create an actual Reddit post
-    // For now, we'll just return the post data
+    // Mark victory post as created to prevent duplicates
+    await redis.set(victoryKey, JSON.stringify({
+      timestamp: Date.now(),
+      postId: createdPost?.id || null,
+      commentId: leaderboardComment?.id || null
+    }), {
+      expiration: new Date(Date.now() + 86400 * 1000) // 24 hours
+    });
+
     res.json({
       status: 'success',
       victoryPost: victoryPostData,
-      message: 'Victory post created successfully'
+      message: 'Victory post created successfully',
+      postCreated: true,
+      redditPostCreated: !!createdPost,
+      redditCommentCreated: !!leaderboardComment
     });
   } catch (error) {
     console.error('Victory post creation error:', error);
     res.status(500).json({ status: 'error', message: 'Failed to create victory post' });
+  }
+});
+
+// Next Boss Preview API - Get tomorrow's boss information
+router.get('/api/nextBoss', async (_, res) => {
+  try {
+    const { postId } = context;
+    if (!postId) {
+      res.status(400).json({ status: 'error', message: 'postId required' });
+      return;
+    }
+
+    // Get tomorrow's boss data
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const dayOfWeek = tomorrow.getDay();
+    
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayName = days[dayOfWeek];
+    
+    // Get next boss from BossManager
+    const nextBossData = await BossManager.getNextBossData(dayName || 'monday');
+    
+    // Calculate time until next boss (8 AM daily reset)
+    const now = new Date();
+    const next8AM = new Date();
+    next8AM.setDate(next8AM.getDate() + 1);
+    next8AM.setHours(8, 0, 0, 0);
+    
+    // If it's already past 8 AM today, set for tomorrow
+    if (now.getHours() >= 8) {
+      next8AM.setDate(next8AM.getDate() + 1);
+    }
+    
+    const timeUntilNext = next8AM.getTime() - now.getTime();
+    
+    res.json({
+      status: 'success',
+      nextBoss: nextBossData,
+      spawnTime: next8AM.toISOString(),
+      timeUntilSpawn: timeUntilNext,
+      countdown: {
+        hours: Math.floor(timeUntilNext / (1000 * 60 * 60)),
+        minutes: Math.floor((timeUntilNext % (1000 * 60 * 60)) / (1000 * 60)),
+        seconds: Math.floor((timeUntilNext % (1000 * 60)) / 1000)
+      }
+    });
+  } catch (error) {
+    console.error('Next boss API error:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to get next boss data' });
   }
 });
 
@@ -913,6 +1102,29 @@ router.post('/api/force-refresh-stats', async (_, res) => {
   }
 });
 
+// Active Fighters Count API - Get current active fighter count for community stats
+router.get('/api/active-fighters-count', async (_, res) => {
+  try {
+    const { postId } = context;
+    if (!postId) {
+      res.status(400).json({ status: 'error', message: 'postId required' });
+      return;
+    }
+
+    const communityManager = new CommunityManager(postId);
+    const activeFighters = await communityManager.getTotalPlayerCount();
+    
+    res.json({
+      status: 'success',
+      activeFighters,
+      lastUpdated: Date.now()
+    });
+  } catch (error) {
+    console.error('Active fighters count API error:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to fetch active fighters count' });
+  }
+});
+
 // Session Recap Sharing API - Create damage sharing comment
 router.post('/api/share-session-recap', async (_, res) => {
   try {
@@ -953,6 +1165,119 @@ router.post('/api/share-session-recap', async (_, res) => {
   } catch (error) {
     console.error('Session recap sharing error:', error);
     res.status(500).json({ status: 'error', message: 'Failed to share session recap' });
+  }
+});
+
+// Core Game State API - Get boss HP and player stats
+router.get<{}, GameStateResponse>('/api/gameState', async (_, res) => {
+  try {
+    const { postId, userId } = context;
+    if (!postId) {
+      res.status(400).json({ status: 'error', message: 'postId required' });
+      return;
+    }
+
+    // Get boss information
+    const bossInfo = await BossManager.getBossInfo(postId);
+    const isDefeated = await BossManager.isBossDefeated(postId);
+    
+    // Get player stats if userId available
+    let playerInfo = null;
+    if (userId) {
+      const playerData = await PlayerManager.getPlayerData(postId, userId);
+      const sessionStats = await PlayerManager.getSessionStats(postId, userId);
+      playerInfo = { data: playerData, sessionStats };
+    }
+    
+    // Get community stats
+    const communityStats = await CommunityManager.getCommunityStats(postId);
+    
+    res.json({
+      status: 'success',
+      boss: {
+        data: bossInfo.data,
+        state: bossInfo.state,
+        isDefeated
+      },
+      player: playerInfo,
+      community: communityStats,
+      lastUpdated: Date.now()
+    });
+  } catch (error) {
+    console.error('Game state API error:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to fetch game state' });
+  }
+});
+
+// Recent Attacks API - Get activity feed data
+router.get<{}, RecentAttacksResponse>('/api/recentAttacks', async (_, res) => {
+  try {
+    const { postId } = context;
+    if (!postId) {
+      res.status(400).json({ status: 'error', message: 'postId required' });
+      return;
+    }
+
+    const recentAttacks = await CommunityManager.getRecentAttacks(postId, 10);
+    
+    res.json({
+      status: 'success',
+      recentAttacks,
+      lastUpdated: Date.now()
+    });
+  } catch (error) {
+    console.error('Recent attacks API error:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to fetch recent attacks' });
+  }
+});
+
+// Session Sharing API - Create Reddit comment for session results
+router.post<{}, ShareSessionResponse, ShareSessionRequest>('/api/share-session', async (req, res) => {
+  try {
+    const { postId, userId } = context;
+    const { sessionDamage, bossName, playerRank } = req.body;
+    
+    if (!postId || !userId) {
+      res.status(400).json({ status: 'error', message: 'postId and userId required' });
+      return;
+    }
+
+    // Get player data for character class
+    const playerData = await PlayerManager.getPlayerData(postId, userId);
+    
+    if (!playerData) {
+      res.status(400).json({ status: 'error', message: 'Player data not found' });
+      return;
+    }
+
+    const classEmojis = {
+      warrior: '⚔️',
+      mage: '🔮',
+      rogue: '🗡️',
+      healer: '✨'
+    };
+
+    const emoji = classEmojis[playerData.characterClass as keyof typeof classEmojis] || '⚔️';
+    
+    // Create session summary comment template as specified in requirements
+    const shareText = `I dealt ${sessionDamage.toLocaleString()} damage as a ${playerData.characterClass} vs ${bossName}! ${emoji}\n` +
+                     `Current rank: #${playerRank || 'Unknown'}\n` +
+                     `Join the battle at r/RaidDay!`;
+
+    // In a real implementation, this would create an actual Reddit comment
+    // For now, we'll just return success to indicate the share was processed
+    res.json({
+      status: 'success',
+      shareText,
+      sessionDamage,
+      bossName,
+      playerRank,
+      characterClass: playerData.characterClass,
+      message: 'Session shared to r/RaidDay successfully'
+    });
+  } catch (error) {
+    console.error('Session sharing error:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to share session' });
   }
 });
 

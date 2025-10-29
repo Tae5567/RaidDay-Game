@@ -259,3 +259,45 @@ export interface PeakActivityData {
   peakMinute: number;
   currentActivity: 'low' | 'medium' | 'high';
 }
+
+// Session Sharing API Types
+export interface ShareSessionRequest {
+  sessionDamage: number;
+  bossName: string;
+  playerRank: number;
+}
+
+export interface ShareSessionResponse {
+  status: 'success' | 'error';
+  shareText?: string;
+  sessionDamage?: number;
+  bossName?: string;
+  playerRank?: number;
+  characterClass?: string;
+  message?: string;
+}
+
+// Game State API Response
+export interface GameStateResponse {
+  status: 'success' | 'error';
+  boss?: {
+    data: BossData;
+    state: BossState;
+    isDefeated: boolean;
+  };
+  player?: {
+    data: PlayerData;
+    sessionStats: SessionStats;
+  } | null;
+  community?: CommunityDPSResponse;
+  lastUpdated?: number;
+  message?: string;
+}
+
+// Recent Attacks API Response
+export interface RecentAttacksResponse {
+  status: 'success' | 'error';
+  recentAttacks?: AttackEvent[];
+  lastUpdated?: number;
+  message?: string;
+}

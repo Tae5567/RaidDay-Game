@@ -1,213 +1,223 @@
 # Implementation Plan
 
-- [x] 1. Set up Phaser.js game foundation and project structure
-  - Initialize Phaser 3.70+ configuration with 800x600 canvas and WebGL/Canvas fallback
-  - Create scene management system with Boot, Splash, Battle, ClassSelect, and Victory scenes
-  - Set up TypeScript project structure with client/game/, entities/, systems/, and utils/ directories
-  - Configure Vite build system for Phaser integration with Devvit
+- [x] 1. Set up simplified Phaser.js game foundation
+  - Initialize Phaser 3.70+ configuration with 800x600 canvas
+  - Create scene management: Boot, Splash, Battle, Results, Victory scenes
+  - Set up TypeScript project structure focused on core gameplay
+  - Configure Vite build system for Devvit integration
   - _Requirements: 1.1, 6.5_
 
-- [x] 2. Implement core entity system and sprite management
-  - [x] 2.1 Create BossEntity class with animation state management
-    - Implement boss sprite loading and animation system (idle, hit, phase2, death)
-    - Add HP tracking, phase transitions, and visual state management
-    - Create boss data structure for daily rotation (7 themed bosses)
-    - _Requirements: 1.1, 1.4, 5.1, 5.3, 5.4_
+- [x] 2. Implement core entity system with simplified mechanics
+  - [x] 2.1 Create BossEntity class with basic animations
+    - Load existing boss sprites from src/client/public/assets/sprites/ (boss_*.png files)
+    - Implement daily boss rotation using all 7 available boss sprites
+    - Add shared HP tracking (50,000 HP pool) and basic idle animations
+    - _Requirements: 2.1, 2.2, 2.5_
 
-  - [x] 2.2 Create PlayerCharacter class with class-specific animations
-    - Implement 4 character classes (Warrior, Mage, Rogue, Healer) with unique sprites
-    - Add animation sequences for idle, run, attack, and special abilities
-    - Create character selection and class-specific damage calculations
-    - _Requirements: 1.2, 3.1, 3.2, 3.4_
+  - [x] 2.2 Create PlayerCharacter class with attack animations
+    - Load character sprites: warrior.png, mage.png, rogue.png, healer.png
+    - Implement 4 character classes with similar damage output using existing sprites
+    - Add attack animation sequence (run forward → attack → run back)
+    - _Requirements: 5.1, 5.2, 7.3_
 
-  - [ ]* 2.3 Write unit tests for entity animation systems
-    - Test animation state transitions and timing
-    - Validate sprite loading and fallback mechanisms
-    - _Requirements: 1.1, 3.2_
+  - [ ]* 2.3 Write unit tests for entity systems
+    - Test animation timing and sprite loading
+    - Validate boss HP synchronization
+    - _Requirements: 2.1, 5.2_
 
-- [x] 3. Build energy system and combat mechanics
-  - [x] 3.1 Implement EnergySystem class with cooldown management
-    - Create 5-point energy system with 30-second per-point cooldowns
-    - Add server-side 2-hour session refresh validation
-    - Implement energy UI indicators with real-time cooldown display
-    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
+- [x] 3. Build session-based combat system
+  - [x] 3.1 Implement SessionSystem for 2-minute gameplay
+    - Create 2-minute session timer with attack counter
+    - Track session damage and attack count (5-10 attacks per session)
+    - Add session end summary and results display
+    - _Requirements: 1.1, 1.4, 8.2_
 
-  - [x] 3.2 Create CombatSystem with damage calculations
-    - Implement base damage formulas with class modifiers and level scaling
-    - Add critical hit system (30% for Rogue, 3x damage multiplier)
-    - Create full energy bonus (20% damage for first attack)
-    - Add boss phase resistance calculations (10% reduction in phase 2)
-    - _Requirements: 2.4, 3.3, 3.4, 5.3_
+  - [x] 3.2 Create simplified damage calculation system
+    - Implement base damage ranges by class (minimal differences)
+    - Add simple level scaling and random variance
+    - Remove complex energy/cooldown mechanics
+    - _Requirements: 5.3, 5.4, 5.5_
 
-  - [x] 3.3 Build attack sequence animation system
-    - Create 1.5-second attack timeline (run forward → attack → particles → run back)
-    - Implement attack validation and energy consumption
-    - Add visual feedback with screen shake and particle effects
+  - [x] 3.3 Build 0.8-second attack sequence animation
+    - Create attack timeline: run forward (0.3s) → attack (0.2s) → run back (0.3s)
+    - Add damage number popup and boss hit flash
+    - Implement screen shake effects for impact
     - _Requirements: 1.2, 1.3, 7.1, 7.2_
 
-  - [ ]* 3.4 Write unit tests for combat calculations
-    - Test damage formulas across all character classes
-    - Validate energy consumption and cooldown logic
-    - _Requirements: 2.1, 3.3_
+  - [ ]* 3.4 Write unit tests for combat mechanics
+    - Test damage calculation consistency
+    - Validate session timing and attack limits
+    - _Requirements: 1.1, 5.3_
 
-- [x] 4. Develop animation and particle systems
-  - [x] 4.1 Create AnimationSystem for sprite management
-    - Implement spritesheet loading for 32x32 character and 128x128 boss sprites
-    - Create animation configs for all character classes and boss types
-    - Add animation queueing and state management
-    - _Requirements: 1.1, 1.2, 3.2, 5.2_
+- [x] 4. Build Splash Scene with boss preview
+  - [x] 4.1 Create SplashScene with current boss display
+    - Use castle_arena.png or background.png as scene background
+    - Show current daily boss sprite with shared HP bar
+    - Display "347 Fighters Active" community counter
+    - Add large "FIGHT NOW!" button to enter battle
+    - _Requirements: 2.1, 2.2, 3.1_
 
-  - [x] 4.2 Build ParticleSystem for visual effects
-    - Create slash effects, critical bursts, and explosion particles
-    - Implement mobile optimization (20 particles max vs 50 desktop)
-    - Add particle pooling for performance optimization
-    - _Requirements: 1.3, 7.2, 7.4, 6.3_
+  - [x] 4.2 Implement boss HP visualization
+    - Create HP bar showing current/max HP (e.g., "87,432 / 50,000")
+    - Add percentage-based visual fill and color coding
+    - Update HP display in real-time from server
+    - _Requirements: 2.2, 2.3, 8.1_
 
-  - [x] 4.3 Implement screen shake and camera effects
-    - Create camera trauma system with scaled intensity (2px/5px/8px)
-    - Add hit pause functionality (0.1s freeze on critical hits)
-    - Implement motion trails for weapon attacks
-    - _Requirements: 7.1, 7.2, 7.4_
+  - [ ] 4.3 Write tests for splash scene functionality
+    - Test HP bar updates and boss display
+    - Validate community counter accuracy
+    - _Requirements: 2.1, 3.1_
 
-- [x] 5. Build Battle Scene UI and HUD system
-  - [x] 5.1 Create BattleHUD with responsive layout
-    - Implement top bar with boss HP, name, and level display
-    - Create bottom bar with energy indicators and action buttons
-    - Add side panel for session stats and community info
-    - Design mobile-responsive layout (portrait/landscape modes)
-    - _Requirements: 8.1, 8.2, 6.1, 6.2_
+- [x] 5. Build Battle Scene with core attack loop
+  - [x] 5.1 Create BattleScene layout and UI
+    - Use castle_arena.png as battle background
+    - Display current boss sprite at top with HP bar
+    - Show player's selected character sprite at bottom with attack button
+    - Create session info display (attacks left, current damage)
+    - _Requirements: 1.1, 1.2, 8.2_
 
-  - [x] 5.2 Implement ActionButton system with visual feedback
-    - Create attack and special ability buttons with glow effects
-    - Add button state management (enabled/disabled/cooldown)
-    - Implement touch controls with 44x44 pixel minimum targets
-    - _Requirements: 6.1, 6.4_
+  - [x] 5.2 Implement attack button and visual feedback
+    - Create large, responsive attack button for mobile
+    - Add button press animations and immediate feedback
+    - Implement attack cooldown prevention (no spam clicking)
+    - _Requirements: 6.1, 6.4, 7.1_
 
-  - [x] 5.3 Build damage number and status message systems
-    - Create floating damage numbers that spawn above boss and fade upward
-    - Implement status message queue for combat feedback ("CRITICAL!", "SLASH!")
-    - Add visual sound effect markers for audio-free feedback
-    - _Requirements: 8.1, 7.5_
+  - [x] 5.3 Build damage number system
+    - Create floating damage numbers that pop above boss
+    - Add "YOUR damage: +234" styling to distinguish player damage
+    - Implement number animation (scale up, fade out, move up)
+    - _Requirements: 8.1, 7.2, 7.4_
 
-- [ ] 6. Implement real-time community features
-  - [x] 6.1 Create Live Activity Feed with Real Players
-    - Show last 4 REAL Reddit usernames who attacked in past 60 seconds
-    - Display their actual character classes and Reddit avatars
-    - Show real damage numbers when they attack
-    - If current user is first player, show only current user
-    - _Requirements: 4.1, 4.2, 4.5_
+- [x] 6. Build Results Scene and session summary
+  - [x] 6.1 Create ResultsScene for session completion
+    - Display "Session Complete!" message with total damage dealt
+    - Show current boss HP remaining and percentage defeated
+    - Add player rank display (e.g., "Your rank: #23")
+    - _Requirements: 1.4, 8.2, 8.3_
 
-  - [x] 6.2 Build Live Leaderboard Overlay System
-    - Create swipe-up gesture to reveal Top 20 leaderboard
-    - Update leaderboard every 10 seconds with real data
-    - Show rank changes in real-time as players compete
-    - Highlight current user's rank with special styling
-    - _Requirements: 4.3, 4.4, 4.5_
+  - [x] 6.2 Implement session sharing functionality
+    - Add "Share to r/RaidDay" button for Reddit posting
+    - Create session summary comment template
+    - Add "Fight Again" button to return to splash
+    - _Requirements: 4.1, 4.2, 4.4_
 
-  - [x] 6.3 Build server synchronization system
-    - Create API endpoints for boss status, community stats, and player data
-    - Implement 10-second HP sync to maintain accuracy
-    - Add real-time community DPS tracking and statistics
-    - _Requirements: 4.3, 4.4, 4.5_
+  - [ ]* 6.3 Write tests for results and sharing
+    - Test session summary calculations
+    - Validate Reddit integration functionality
+    - _Requirements: 1.4, 4.1_
 
-  - [ ]* 6.3 Write integration tests for community features
-    - Test real-time synchronization accuracy
-    - Validate community attack simulation
-    - _Requirements: 4.2, 4.3_
+- [x] 7. Implement real-time community features
+  - [x] 7.1 Create Live Activity Feed
+    - Show scrolling ticker of recent attacks: "u/Player1 dealt 234 damage (5s ago)"
+    - Update feed every 5 seconds with last 10 attacks
+    - Display real Reddit usernames and damage amounts
+    - _Requirements: 3.2, 3.3, 3.4_
 
-- [x] 7. Build server-side game logic and API
-  - [x] 7.1 Implement boss management system
-    - Create daily boss rotation with 7 themed bosses
-    - Build boss HP scaling based on active player count
-    - Add boss state persistence and phase tracking
-    - _Requirements: 5.1, 5.2, 5.5_
-
-  - [x] 7.2 Create player data management
-    - Implement player progression, XP, and level tracking
-    - Add session management with energy refresh validation
-    - Create leaderboard and statistics tracking
-    - _Requirements: 2.5, 8.3, 8.5_
-
-  - [x] 7.3 Build combat API endpoints
-    - Create /api/attack endpoint with validation and damage processing
-    - Implement /api/special-ability with cooldown enforcement
-    - Add /api/boss-status and /api/community-dps endpoints
-    - _Requirements: 2.1, 3.4, 4.4_
-
-  - [ ]* 7.4 Write API validation tests
-    - Test attack validation and anti-cheat measures
-    - Validate energy system server-side enforcement
-    - _Requirements: 2.2, 3.4_
-
-- [x] 8. Implement special abilities and class mechanics
-  - [x] 8.1 Create class-specific special abilities
-    - Warrior: 3-hit combo charge attack with enhanced animations
-    - Mage: Fireball with screen shake and explosion effects
-    - Rogue: Backstab teleport with critical damage guarantee
-    - Healer: Buff aura affecting next 5 community attacks (+20% damage)
+  - [x] 7.2 Build Live Leaderboard system
+    - Create top 10 leaderboard updated every 10 seconds
+    - Highlight current player's rank with special styling
+    - Show username, total damage, and current rank
     - _Requirements: 3.1, 3.4, 3.5_
 
-  - [x] 8.2 Implement special ability cooldown system
-    - Add once-per-session limitation with server-side validation
-    - Create enhanced visual effects for special attacks
-    - Implement 3-energy cost and 3x damage multiplier
-    - _Requirements: 3.4, 3.5_
+  - [x] 7.3 Implement server synchronization
+    - Create API endpoints for real-time data (boss HP, leaderboard, recent attacks)
+    - Sync boss HP every 10 seconds to maintain accuracy
+    - Add community stats tracking (active fighters count)
+    - _Requirements: 2.3, 3.1, 3.2_
 
-- [x] 9. Build victory sequence and rewards system
-  - [x] 9.1 Create VictoryScene with celebration animations
-    - Implement boss death sequence with 8-frame explosion animation
-    - Add screen flash, particle explosion, and "VICTORY!" text display
-    - Create loot rain physics with bouncing item sprites
-    - _Requirements: 1.5, 8.3_
+  - [ ]* 7.4 Write integration tests for community features
+    - Test real-time data synchronization
+    - Validate leaderboard accuracy and updates
+    - _Requirements: 3.1, 3.2_
 
-  - [x] 9.2 Implement reward distribution and progression
-    - Create XP bar animation with level-up effects
-    - Add leaderboard display showing top 5 contributors
-    - Implement next boss countdown and preview system
-    - _Requirements: 8.4, 8.5, 5.5_
+- [x] 8. Build server-side game logic and Redis data
+  - [x] 8.1 Implement boss management system
+    - Create daily boss rotation with 7 themed bosses
+    - Set up Redis schema for shared boss HP (50,000)
+    - Add boss state persistence and daily reset at 8 AM
+    - _Requirements: 2.1, 2.2, 2.5_
 
-  - [x] 9.3 Add Reddit Post Auto-Generation
-    - Create victory post when boss dies: "🎉 r/RaidDay defeated [Boss Name]!"
-    - Tag top 3 players in the victory post
-    - Include full leaderboard in post comments
-    - Enable player celebration comments
-    - _Requirements: 8.3, 8.4, 8.5_
+  - [x] 8.2 Create player data management
+    - Implement player stats tracking (class, level, total damage)
+    - Add session damage tracking and leaderboard updates
+    - Create Redis sorted sets for daily leaderboards
+    - _Requirements: 3.1, 3.4, 8.3_
 
-  - [x] 9.4 Build Session Recap Sharing
-    - Add "Share my damage to r/RaidDay" button after session ends
-    - Create comment: "I dealt X damage as a [Class]! ⚔️"
-    - Enable other players to upvote and reply to damage posts
-    - _Requirements: 8.4, 8.5_
+  - [x] 8.3 Build core API endpoints
+    - Create POST /api/attack endpoint for damage processing
+    - Implement GET /api/gameState for boss HP and player stats
+    - Add GET /api/recentAttacks for activity feed
+    - Add GET /api/leaderboard for top 10 rankings
+    - _Requirements: 1.1, 2.3, 3.2_
 
-- [x] 10. Add mobile optimization and performance features
-  - [x] 10.1 Implement responsive design system
-    - Create dynamic layout scaling for portrait/landscape modes
-    - Add touch gesture support (tap, hold, swipe)
-    - Implement mobile performance optimizations (reduced particles, sprite batching)
-    - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
+  - [ ]* 8.4 Write API validation tests
+    - Test attack processing and HP updates
+    - Validate leaderboard accuracy and Redis operations
+    - _Requirements: 2.2, 3.1_
 
-  - [x] 10.2 Build performance monitoring and optimization
-    - Add frame rate detection and automatic quality adjustment
+- [x] 9. Build victory sequence and Reddit integration
+  - [x] 9.1 Create VictoryScene with boss defeat celebration
+    - Implement boss death animation and victory screen
+    - Add "VICTORY!" message and celebration effects
+    - Display final leaderboard with top contributors
+    - _Requirements: 1.5, 8.4_
+
+  - [x] 9.2 Implement automatic Reddit post creation
+    - Create victory post when boss HP reaches 0: "🎉 r/RaidDay defeated [Boss Name]!"
+    - Tag top 3 contributors in the victory post
+    - Add full leaderboard as comment on victory post
+    - _Requirements: 4.3, 4.4, 4.5_
+
+  - [x] 9.3 Add next boss preview system
+    - Show tomorrow's boss preview after victory
+    - Display countdown timer to next boss (8 AM daily reset)
+    - Create anticipation for next day's battle
+    - _Requirements: 2.5, 8.4_
+
+  - [ ]* 9.4 Write tests for victory and Reddit integration
+    - Test victory conditions and post creation
+    - Validate leaderboard accuracy in victory posts
+    - _Requirements: 4.3, 4.4_
+
+- [x] 10. Add mobile optimization and visual polish
+  - [x] 10.1 Implement mobile-responsive design
+    - Optimize layout for mobile portrait mode (primary Reddit usage)
+    - Create large, touch-friendly attack buttons (60x60 minimum)
+    - Scale game canvas to fit mobile screens while maintaining aspect ratio
+    - _Requirements: 6.1, 6.2, 6.5_
+
+  - [x] 10.2 Add visual effects and screen juice
+    - Implement screen shake effects proportional to damage dealt
+    - Add particle effects for attacks (limited to 10 particles on mobile)
+    - Create smooth entrance animations for boss and player
+    - _Requirements: 7.1, 7.2, 7.5_
+
+  - [x] 10.3 Optimize performance for mobile devices
+    - Add frame rate monitoring and automatic quality adjustment
     - Implement object pooling for damage numbers and particles
     - Create fallback systems for low-performance devices
-    - _Requirements: 6.3, 6.5_
+    - _Requirements: 6.3, 6.4_
 
-- [ ] 11. Integrate error handling and polish features
-  - [x] 11.1 Implement comprehensive error handling
-    - Add network failure recovery with offline mode simulation
-    - Create sprite loading fallbacks (colored rectangles if assets fail)
-    - Implement graceful degradation for performance issues
+  - [ ]* 10.4 Write performance and mobile tests
+    - Test mobile responsiveness across different screen sizes
+    - Validate frame rate performance on low-end devices
+    - _Requirements: 6.1, 6.3_
+
+- [ ] 11. Final integration and error handling
+  - [ ] 11.1 Implement comprehensive error handling
+    - Add network failure recovery with retry mechanisms
+    - Create sprite loading fallbacks (colored shapes if assets fail)
+    - Implement graceful degradation for API timeouts
     - _Requirements: All requirements (error resilience)_
 
-  - [ ] 11.2 Add final polish and juice effects
-    - Implement entrance animations for boss and players (no black screens)
-    - Add hit pause system and motion blur trails
-    - Create loading polish with smooth transitions
-    - Fine-tune all animation timings and visual feedback
+  - [x] 11.2 Add final polish and smooth transitions
+    - Ensure no black loading screens between scenes
+    - Fine-tune all animation timings for satisfying feel
+    - Add loading indicators and smooth scene transitions
     - _Requirements: 7.3, 7.4, 7.5_
 
 - [ ]* 12. Create comprehensive test suite
-  - Write end-to-end tests for complete battle sessions
-  - Test mobile responsiveness across different screen sizes
-  - Validate performance benchmarks and optimization targets
+  - Write end-to-end tests for complete 2-minute battle sessions
+  - Test Reddit integration and post creation functionality
+  - Validate shared HP synchronization across multiple players
   - _Requirements: All requirements (quality assurance)_

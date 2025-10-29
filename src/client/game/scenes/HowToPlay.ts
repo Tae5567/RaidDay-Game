@@ -18,7 +18,7 @@ export class HowToPlay extends Scene {
     this.createBackground();
     this.createContent();
     this.createBackButton();
-    
+
     this.refreshLayout();
 
     // Re-calculate positions on resize
@@ -27,11 +27,11 @@ export class HowToPlay extends Scene {
 
   private createBackground(): void {
     const { width, height } = this.scale;
-    
+
     // Dark gradient background matching game theme
     const graphics = this.add.graphics();
     graphics.fillGradientStyle(
-      GameConstants.COLORS.BACKGROUND, 
+      GameConstants.COLORS.BACKGROUND,
       GameConstants.COLORS.BACKGROUND,
       GameConstants.COLORS.UI_PRIMARY,
       GameConstants.COLORS.UI_PRIMARY
@@ -52,33 +52,30 @@ export class HowToPlay extends Scene {
       align: 'center',
     }).setOrigin(0.5);
 
-    // Simple, concise instructions
-    const instructions = this.add.text(0, 0, 
-      'GOAL: Defeat the daily boss with other Reddit players!\n\n' +
-      
-      'COMBAT:\n' +
-      '• Choose your class (Warrior, Mage, Rogue, Healer)\n' +
-      '• Click ATTACK or press SPACEBAR to fight\n' +
-      '• Click SPECIAL or press SHIFT for big damage\n' +
-      '• Energy refills over time (30 seconds each)\n\n' +
-      
-      'STRATEGY:\n' +
-      '• Full energy (5/5) = 20% damage bonus\n' +
-      '• Boss gets stronger at 75% health\n' +
-      '• Work together for maximum damage!\n\n' +
-      
+    // Simplified, readable instructions
+    const instructions = this.add.text(0, 0,
+      'GOAL:\nDefeat the boss with other players!\n\n' +
+
+      'HOW TO PLAY:\n' +
+      '• Choose your class\n' +
+      '• Click ATTACK to fight\n' +
+      '• Click SPECIAL for big damage\n' +
+      '• Energy refills over time\n\n' +
+
       'CLASSES:\n' +
-      '• WARRIOR: Balanced damage dealer\n' +
-      '• MAGE: Magical area attacks\n' +
-      '• ROGUE: 30% critical hit chance\n' +
-      '• HEALER: Support and team buffs',
+      '• WARRIOR: Strong attacks\n' +
+      '• MAGE: Magic damage\n' +
+      '• ROGUE: Critical hits\n' +
+      '• HEALER: Team support',
       {
-        fontFamily: 'Arial',
-        fontSize: MobileUtils.isMobile() ? '12px' : '16px',
-        color: '#cccccc',
-        align: 'left',
-        lineSpacing: 4,
-        wordWrap: { width: MobileUtils.isMobile() ? 300 : 500 }
+        fontFamily: 'Arial Black',
+        fontSize: MobileUtils.isMobile() ? '18px' : '20px',
+        color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 3,
+        align: 'center',
+        lineSpacing: 8,
+        wordWrap: { width: MobileUtils.isMobile() ? 280 : 400 }
       }
     ).setOrigin(0.5);
 
@@ -90,9 +87,9 @@ export class HowToPlay extends Scene {
     const buttonContainer = this.add.container(0, 0);
 
     // Button background
-    const buttonBg = this.add.rectangle(0, 0, 
-      MobileUtils.isMobile() ? 120 : 150, 
-      MobileUtils.isMobile() ? 40 : 50, 
+    const buttonBg = this.add.rectangle(0, 0,
+      MobileUtils.isMobile() ? 120 : 150,
+      MobileUtils.isMobile() ? 40 : 50,
       GameConstants.COLORS.BUTTON_ENABLED
     ).setStrokeStyle(2, GameConstants.COLORS.TEXT_PRIMARY);
 
@@ -125,8 +122,8 @@ export class HowToPlay extends Scene {
   private refreshLayout(): void {
     const { width, height } = this.scale;
 
-    // Resize camera
-    this.cameras.resize(width, height);
+    // Resize camera to fill entire screen
+    this.cameras.main.setViewport(0, 0, width, height);
 
     // Scale factor for responsive design
     const scaleFactor = Math.min(width / GameConstants.GAME_WIDTH, height / GameConstants.GAME_HEIGHT, 1);
@@ -136,14 +133,14 @@ export class HowToPlay extends Scene {
       this.contentContainer.setPosition(width / 2, height / 2);
       this.contentContainer.setScale(scaleFactor);
 
-      // Layout content elements vertically
+      // Layout content elements vertically with better spacing
       const children = this.contentContainer.list as Phaser.GameObjects.Text[];
       if (children.length >= 2) {
         const title = children[0];
         const instructions = children[1];
         if (title && instructions) {
-          title.setPosition(0, -150); // Title
-          instructions.setPosition(0, 0);    // Instructions
+          title.setPosition(0, -180); // Title
+          instructions.setPosition(0, 20);    // Instructions with more space
         }
       }
     }
@@ -151,7 +148,7 @@ export class HowToPlay extends Scene {
     // Position back button
     if (this.backButton) {
       this.backButton.setPosition(
-        MobileUtils.isMobile() ? 70 : 100, 
+        MobileUtils.isMobile() ? 70 : 100,
         MobileUtils.isMobile() ? 40 : 50
       );
       this.backButton.setScale(scaleFactor);

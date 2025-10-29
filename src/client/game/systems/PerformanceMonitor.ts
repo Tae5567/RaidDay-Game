@@ -1,6 +1,6 @@
 import { Scene } from 'phaser';
 import { MobileUtils } from '../utils/MobileUtils';
-import { GameConstants } from '../utils/GameConstants';
+// GameConstants import removed as it's not used
 
 export interface PerformanceMetrics {
   fps: number;
@@ -168,7 +168,7 @@ export class PerformanceMonitor {
     
     // Count display objects
     this.scene.children.list.forEach(child => {
-      if (child.active && child.visible) {
+      if (child.active && (child as any).visible !== false) {
         count++;
         
         // Count children of containers
@@ -500,7 +500,7 @@ export class PerformanceMonitor {
     this.scene.events.off('postupdate');
     
     // Clear callbacks
-    this.onQualityChangeCallback = undefined;
-    this.onPerformanceWarningCallback = undefined;
+    this.onQualityChangeCallback = undefined as any;
+    this.onPerformanceWarningCallback = undefined as any;
   }
 }

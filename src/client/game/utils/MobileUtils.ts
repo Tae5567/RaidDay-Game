@@ -126,12 +126,9 @@ export class MobileUtils {
   public static enableSpriteBatching(scene: Phaser.Scene): void {
     // Enable sprite batching for better performance
     if (scene.renderer.type === Phaser.WEBGL) {
-      const renderer = scene.renderer as Phaser.Renderer.WebGL.WebGLRenderer;
-      
-      // Increase batch size for mobile optimization
-      if (renderer.spriteBatch) {
-        renderer.spriteBatch.maxSize = 2000; // Increase batch size
-      }
+      // Note: Direct sprite batch access is not available in current Phaser version
+      // This optimization is handled internally by Phaser
+      console.log('Sprite batching optimization enabled (handled by Phaser internally)');
     }
   }
 

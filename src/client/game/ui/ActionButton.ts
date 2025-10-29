@@ -50,8 +50,8 @@ export class ActionButton extends Phaser.GameObjects.Container {
     
     this.scene = scene;
     this.config = {
-      width: MobileUtils.isMobile() ? Math.max(config.width || 80, GameConstants.MOBILE_TOUCH_TARGET_SIZE) : config.width || 120,
-      height: MobileUtils.isMobile() ? Math.max(config.height || 44, GameConstants.MOBILE_TOUCH_TARGET_SIZE) : config.height || 40,
+      width: MobileUtils.isMobile() ? Math.max(config.width || 80, 60) : config.width || 120, // 60x60 minimum for mobile
+      height: MobileUtils.isMobile() ? Math.max(config.height || 44, 60) : config.height || 40, // 60x60 minimum for mobile
       enabledColor: config.enabledColor || GameConstants.COLORS.BUTTON_ENABLED,
       disabledColor: config.disabledColor || GameConstants.COLORS.BUTTON_DISABLED,
       glowColor: config.glowColor || 0xffffff,

@@ -52,21 +52,45 @@ export interface BossData {
 }
 
 /**
- * Daily boss rotation data (7 themed bosses)
+ * Daily boss rotation data (7 themed bosses with shared 50,000 HP)
  */
 export const DAILY_BOSSES: Record<string, BossData> = {
+  sunday: {
+    id: 'cringe',
+    name: 'The Cringe',
+    theme: DailyTheme.MEMES,
+    baseHP: 50000,
+    level: 1,
+    spriteKey: 'boss_cringe',
+    animations: {
+      idle: { frames: 1, frameRate: 1, repeat: -1 },
+      hit: { frames: 1, frameRate: 1, repeat: 0 },
+      phase2: { frames: 1, frameRate: 1, repeat: -1 },
+      death: { frames: 1, frameRate: 1, repeat: 0 }
+    },
+    hitEffect: {
+      particles: 'cringe_particles',
+      screenShake: GameConstants.SHAKE_NORMAL,
+      flashColor: 0xffa500
+    },
+    attackPattern: {
+      frequency: 10000,
+      animation: 'cringe_wave',
+      message: 'So cringe...'
+    }
+  },
   monday: {
     id: 'lag_spike',
     name: 'The Lag Spike',
     theme: DailyTheme.GAMING,
-    baseHP: 80000,
-    level: 45,
+    baseHP: 50000,
+    level: 1,
     spriteKey: 'boss_lag_spike',
     animations: {
-      idle: { frames: 3, frameRate: 2, repeat: -1 },
-      hit: { frames: 2, frameRate: 10, repeat: 0 },
-      phase2: { frames: 3, frameRate: 4, repeat: -1 },
-      death: { frames: 8, frameRate: 5, repeat: 0 }
+      idle: { frames: 1, frameRate: 1, repeat: -1 },
+      hit: { frames: 1, frameRate: 1, repeat: 0 },
+      phase2: { frames: 1, frameRate: 1, repeat: -1 },
+      death: { frames: 1, frameRate: 1, repeat: 0 }
     },
     hitEffect: {
       particles: 'glitch_particles',
@@ -83,14 +107,14 @@ export const DAILY_BOSSES: Record<string, BossData> = {
     id: 'algorithm',
     name: 'The Algorithm',
     theme: DailyTheme.INTERNET,
-    baseHP: 85000,
-    level: 47,
+    baseHP: 50000,
+    level: 1,
     spriteKey: 'boss_algorithm',
     animations: {
-      idle: { frames: 4, frameRate: 3, repeat: -1 },
-      hit: { frames: 2, frameRate: 12, repeat: 0 },
-      phase2: { frames: 4, frameRate: 5, repeat: -1 },
-      death: { frames: 6, frameRate: 6, repeat: 0 }
+      idle: { frames: 1, frameRate: 1, repeat: -1 },
+      hit: { frames: 1, frameRate: 1, repeat: 0 },
+      phase2: { frames: 1, frameRate: 1, repeat: -1 },
+      death: { frames: 1, frameRate: 1, repeat: 0 }
     },
     hitEffect: {
       particles: 'code_particles',
@@ -107,14 +131,14 @@ export const DAILY_BOSSES: Record<string, BossData> = {
     id: 'influencer',
     name: 'The Influencer',
     theme: DailyTheme.SOCIAL_MEDIA,
-    baseHP: 75000,
-    level: 42,
+    baseHP: 50000,
+    level: 1,
     spriteKey: 'boss_influencer',
     animations: {
-      idle: { frames: 3, frameRate: 2, repeat: -1 },
-      hit: { frames: 3, frameRate: 8, repeat: 0 },
-      phase2: { frames: 4, frameRate: 4, repeat: -1 },
-      death: { frames: 7, frameRate: 4, repeat: 0 }
+      idle: { frames: 1, frameRate: 1, repeat: -1 },
+      hit: { frames: 1, frameRate: 1, repeat: 0 },
+      phase2: { frames: 1, frameRate: 1, repeat: -1 },
+      death: { frames: 1, frameRate: 1, repeat: 0 }
     },
     hitEffect: {
       particles: 'heart_particles',
@@ -131,14 +155,14 @@ export const DAILY_BOSSES: Record<string, BossData> = {
     id: 'deadline',
     name: 'The Deadline',
     theme: DailyTheme.WORK,
-    baseHP: 90000,
-    level: 50,
+    baseHP: 50000,
+    level: 1,
     spriteKey: 'boss_deadline',
     animations: {
-      idle: { frames: 2, frameRate: 1, repeat: -1 },
-      hit: { frames: 2, frameRate: 15, repeat: 0 },
-      phase2: { frames: 3, frameRate: 6, repeat: -1 },
-      death: { frames: 5, frameRate: 3, repeat: 0 }
+      idle: { frames: 1, frameRate: 1, repeat: -1 },
+      hit: { frames: 1, frameRate: 1, repeat: 0 },
+      phase2: { frames: 1, frameRate: 1, repeat: -1 },
+      death: { frames: 1, frameRate: 1, repeat: 0 }
     },
     hitEffect: {
       particles: 'stress_particles',
@@ -155,14 +179,14 @@ export const DAILY_BOSSES: Record<string, BossData> = {
     id: 'spoiler',
     name: 'The Spoiler',
     theme: DailyTheme.ENTERTAINMENT,
-    baseHP: 70000,
-    level: 40,
+    baseHP: 50000,
+    level: 1,
     spriteKey: 'boss_spoiler',
     animations: {
-      idle: { frames: 3, frameRate: 2, repeat: -1 },
-      hit: { frames: 2, frameRate: 10, repeat: 0 },
-      phase2: { frames: 3, frameRate: 3, repeat: -1 },
-      death: { frames: 6, frameRate: 4, repeat: 0 }
+      idle: { frames: 1, frameRate: 1, repeat: -1 },
+      hit: { frames: 1, frameRate: 1, repeat: 0 },
+      phase2: { frames: 1, frameRate: 1, repeat: -1 },
+      death: { frames: 1, frameRate: 1, repeat: 0 }
     },
     hitEffect: {
       particles: 'reveal_particles',
@@ -179,14 +203,14 @@ export const DAILY_BOSSES: Record<string, BossData> = {
     id: 'referee',
     name: 'The Referee',
     theme: DailyTheme.SPORTS,
-    baseHP: 95000,
-    level: 52,
+    baseHP: 50000,
+    level: 1,
     spriteKey: 'boss_referee',
     animations: {
-      idle: { frames: 2, frameRate: 2, repeat: -1 },
-      hit: { frames: 3, frameRate: 12, repeat: 0 },
-      phase2: { frames: 2, frameRate: 4, repeat: -1 },
-      death: { frames: 4, frameRate: 5, repeat: 0 }
+      idle: { frames: 1, frameRate: 1, repeat: -1 },
+      hit: { frames: 1, frameRate: 1, repeat: 0 },
+      phase2: { frames: 1, frameRate: 1, repeat: -1 },
+      death: { frames: 1, frameRate: 1, repeat: 0 }
     },
     hitEffect: {
       particles: 'whistle_particles',
@@ -197,30 +221,6 @@ export const DAILY_BOSSES: Record<string, BossData> = {
       frequency: 4000,
       animation: 'whistle_blow',
       message: 'FOUL!'
-    }
-  },
-  sunday: {
-    id: 'cringe',
-    name: 'The Cringe',
-    theme: DailyTheme.MEMES,
-    baseHP: 65000,
-    level: 38,
-    spriteKey: 'boss_cringe',
-    animations: {
-      idle: { frames: 4, frameRate: 1, repeat: -1 },
-      hit: { frames: 3, frameRate: 6, repeat: 0 },
-      phase2: { frames: 4, frameRate: 2, repeat: -1 },
-      death: { frames: 10, frameRate: 8, repeat: 0 }
-    },
-    hitEffect: {
-      particles: 'cringe_particles',
-      screenShake: GameConstants.SHAKE_NORMAL,
-      flashColor: 0xffa500
-    },
-    attackPattern: {
-      frequency: 10000,
-      animation: 'cringe_wave',
-      message: 'So cringe...'
     }
   }
 };
@@ -255,82 +255,84 @@ export class BossEntity extends Phaser.GameObjects.Sprite {
     // Create animations if they don't exist
     this.createAnimations();
     
-    // Start idle animation (disabled for now due to missing sprites)
-    // this.playIdleAnimation();
+    // Start idle animation with breathing effect
+    this.playIdleAnimation();
   }
 
   /**
-   * Create all animations for this boss
+   * Create basic animations for this boss (simplified for single-frame sprites)
    */
   private createAnimations(): void {
     const scene = this.scene;
     const spriteKey = this.bossData.spriteKey;
     
-    // Create idle animation
+    // For now, we'll use simple static sprites with basic idle "animation"
+    // This creates a simple breathing/floating effect using tweens instead of frame animation
+    
+    // Create idle animation (just a simple scale tween for breathing effect)
     if (!scene.anims.exists(`${spriteKey}_idle`)) {
       scene.anims.create({
         key: `${spriteKey}_idle`,
-        frames: scene.anims.generateFrameNumbers(spriteKey, { 
-          start: 0, 
-          end: this.bossData.animations.idle.frames - 1 
-        }),
-        frameRate: this.bossData.animations.idle.frameRate,
-        repeat: this.bossData.animations.idle.repeat || -1
+        frames: [{ key: spriteKey, frame: 0 }],
+        frameRate: 1,
+        repeat: -1
       });
     }
 
-    // Create hit animation
+    // Create hit animation (same frame, will use tint for hit effect)
     if (!scene.anims.exists(`${spriteKey}_hit`)) {
       scene.anims.create({
         key: `${spriteKey}_hit`,
-        frames: scene.anims.generateFrameNumbers(spriteKey, { 
-          start: this.bossData.animations.idle.frames, 
-          end: this.bossData.animations.idle.frames + this.bossData.animations.hit.frames - 1 
-        }),
-        frameRate: this.bossData.animations.hit.frameRate,
-        repeat: this.bossData.animations.hit.repeat || 0
+        frames: [{ key: spriteKey, frame: 0 }],
+        frameRate: 1,
+        repeat: 0
       });
     }
 
-    // Create phase2 animation
+    // Create phase2 animation (same frame, will use different effects)
     if (!scene.anims.exists(`${spriteKey}_phase2`)) {
       scene.anims.create({
         key: `${spriteKey}_phase2`,
-        frames: scene.anims.generateFrameNumbers(spriteKey, { 
-          start: this.bossData.animations.idle.frames + this.bossData.animations.hit.frames, 
-          end: this.bossData.animations.idle.frames + this.bossData.animations.hit.frames + this.bossData.animations.phase2.frames - 1 
-        }),
-        frameRate: this.bossData.animations.phase2.frameRate,
-        repeat: this.bossData.animations.phase2.repeat || -1
+        frames: [{ key: spriteKey, frame: 0 }],
+        frameRate: 1,
+        repeat: -1
       });
     }
 
-    // Create death animation
+    // Create death animation (same frame, will use fade out)
     if (!scene.anims.exists(`${spriteKey}_death`)) {
       scene.anims.create({
         key: `${spriteKey}_death`,
-        frames: scene.anims.generateFrameNumbers(spriteKey, { 
-          start: this.bossData.animations.idle.frames + this.bossData.animations.hit.frames + this.bossData.animations.phase2.frames, 
-          end: this.bossData.animations.idle.frames + this.bossData.animations.hit.frames + this.bossData.animations.phase2.frames + this.bossData.animations.death.frames - 1 
-        }),
-        frameRate: this.bossData.animations.death.frameRate,
-        repeat: this.bossData.animations.death.repeat || 0
+        frames: [{ key: spriteKey, frame: 0 }],
+        frameRate: 1,
+        repeat: 0
       });
     }
   }
 
   /**
-   * Play idle animation (phase-dependent)
+   * Play idle animation with breathing effect (phase-dependent)
    */
   public playIdleAnimation(): void {
     if (this._isDead) return;
     
-    // Animations disabled for now due to missing sprites
-    // const animKey = this._isInPhase2 ? 
-    //   `${this.bossData.spriteKey}_phase2` : 
-    //   `${this.bossData.spriteKey}_idle`;
-    // 
-    // this.play(animKey);
+    // Play the basic animation
+    const animKey = this._isInPhase2 ? 
+      `${this.bossData.spriteKey}_phase2` : 
+      `${this.bossData.spriteKey}_idle`;
+    
+    this.play(animKey);
+    
+    // Add breathing effect with tween
+    this.scene.tweens.add({
+      targets: this,
+      scaleX: 1.05,
+      scaleY: 1.05,
+      duration: 2000,
+      ease: 'Sine.easeInOut',
+      yoyo: true,
+      repeat: -1
+    });
   }
 
   /**
@@ -365,17 +367,19 @@ export class BossEntity extends Phaser.GameObjects.Sprite {
       this.hitTween.destroy();
     }
     
-    // Play hit animation (disabled for now)
-    // this.play(`${this.bossData.spriteKey}_hit`);
+    // Play hit animation
+    this.play(`${this.bossData.spriteKey}_hit`);
     
     // Color flash effect
     this.setTint(this.bossData.hitEffect.flashColor);
     
-    // Create tween to remove tint
+    // Create tween to remove tint and add hit shake
     this.hitTween = this.scene.tweens.add({
       targets: this,
-      duration: 150,
+      x: this.x + 5,
+      duration: 75,
       ease: 'Power2',
+      yoyo: true,
       onComplete: () => {
         this.clearTint();
         // Return to idle animation after hit
@@ -412,24 +416,34 @@ export class BossEntity extends Phaser.GameObjects.Sprite {
     if (!this._isDead) return;
     
     return new Promise((resolve) => {
-      // Play death animation (disabled for now)
-      // this.play(`${this.bossData.spriteKey}_death`);
+      // Play death animation
+      this.play(`${this.bossData.spriteKey}_death`);
       
       // Screen shake effect
       this.scene.cameras.main.shake(500, GameConstants.SHAKE_BOSS_PHASE);
       
-      // Simulate animation complete after delay
-      this.scene.time.delayedCall(1000, () => {
-        // Fade out the boss
-        this.scene.tweens.add({
-          targets: this,
-          alpha: 0,
-          duration: 1000,
-          ease: 'Power2',
-          onComplete: () => {
-            resolve();
-          }
-        });
+      // Death animation with scale and rotation
+      this.scene.tweens.add({
+        targets: this,
+        scaleX: 1.5,
+        scaleY: 1.5,
+        rotation: 0.2,
+        duration: 500,
+        ease: 'Power2',
+        onComplete: () => {
+          // Fade out the boss
+          this.scene.tweens.add({
+            targets: this,
+            alpha: 0,
+            scaleX: 0.5,
+            scaleY: 0.5,
+            duration: 1000,
+            ease: 'Power2',
+            onComplete: () => {
+              resolve();
+            }
+          });
+        }
       });
     });
   }

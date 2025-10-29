@@ -51,7 +51,6 @@ export class TouchGestureSystem {
   
   // Event callbacks
   private onTapCallback?: (data: TapData) => void;
-  private onHoldCallback?: (data: HoldData) => void;
   private onHoldStartCallback?: (data: { x: number; y: number }) => void;
   private onHoldEndCallback?: (data: { x: number; y: number; duration: number }) => void;
   private onSwipeCallback?: (data: SwipeData) => void;
@@ -157,8 +156,8 @@ export class TouchGestureSystem {
     
     // Reset tracking
     this.isTracking = false;
-    this.touchStart = undefined;
-    this.touchCurrent = undefined;
+    this.touchStart = undefined as any;
+    this.touchCurrent = undefined as any;
   }
 
   private startHoldTimer(): void {
@@ -185,7 +184,7 @@ export class TouchGestureSystem {
   private cancelHoldTimer(): void {
     if (this.holdTimer) {
       this.holdTimer.destroy();
-      this.holdTimer = undefined;
+      this.holdTimer = undefined as any;
       
       // If we were in a hold, trigger hold end
       if (this.touchStart && this.isTracking) {
@@ -264,12 +263,7 @@ export class TouchGestureSystem {
     this.onTapCallback = callback;
   }
 
-  /**
-   * Set hold gesture callbacks
-   */
-  public onHold(callback: (data: HoldData) => void): void {
-    this.onHoldCallback = callback;
-  }
+
 
   public onHoldStart(callback: (data: { x: number; y: number }) => void): void {
     this.onHoldStartCallback = callback;
@@ -295,8 +289,8 @@ export class TouchGestureSystem {
     if (!enabled) {
       this.cancelHoldTimer();
       this.isTracking = false;
-      this.touchStart = undefined;
-      this.touchCurrent = undefined;
+      this.touchStart = undefined as any;
+      this.touchCurrent = undefined as any;
     }
   }
 
@@ -347,10 +341,9 @@ export class TouchGestureSystem {
     this.scene.input.off('pointerup');
     
     // Clear callbacks
-    this.onTapCallback = undefined;
-    this.onHoldCallback = undefined;
-    this.onHoldStartCallback = undefined;
-    this.onHoldEndCallback = undefined;
-    this.onSwipeCallback = undefined;
+    this.onTapCallback = undefined as any;
+    this.onHoldStartCallback = undefined as any;
+    this.onHoldEndCallback = undefined as any;
+    this.onSwipeCallback = undefined as any;
   }
 }

@@ -76,6 +76,17 @@ export class CameraEffectsSystem {
     this.addTrauma(traumaAmount);
   }
 
+  /**
+   * Screen shake proportional to damage dealt (Requirements 7.1)
+   */
+  public screenShakeForDamage(damage: number, baseDamage: number = 200): void {
+    // Calculate shake intensity based on damage relative to base damage
+    const damageRatio = Math.min(damage / baseDamage, 3.0); // Cap at 3x base damage
+    const intensity = Math.max(0.2, damageRatio * 0.5); // Min 0.2, max 1.5 trauma
+    
+    this.addTrauma(intensity);
+  }
+
   public hitPause(pauseDuration: number = GameConstants.HIT_PAUSE_DURATION): void {
     if (this.hitPauseTimer) {
       this.hitPauseTimer.destroy();

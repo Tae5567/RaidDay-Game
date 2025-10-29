@@ -1,94 +1,230 @@
 # Raid Day - Boss Battle Arena
 
-**A collaborative boss battle game for Reddit built with Phaser.js**
+**A fast-paced collaborative boss battle game for Reddit built with Phaser.js**
 
-Raid Day is a fully playable 2D boss battle game designed to bring Reddit communities together in epic daily boss fights. Built with Phaser.js 3.70+ and integrated with Reddit's Devvit platform, this game features a complete scene-based progression system with character class selection, comprehensive tutorials, and fully implemented strategic energy-based combat.
+Raid Day is a fully playable 2D boss battle game designed to bring Reddit communities together in intense, time-limited boss fights. Built with Phaser.js 3.70+ and integrated with Reddit's Devvit platform, this streamlined game features rapid combat sessions with simple click-to-attack mechanics and community sharing.
 
 ## What is Raid Day?
 
-Raid Day is an innovative browser-based boss battle game that transforms traditional MMO raid mechanics into bite-sized, strategic combat sessions perfect for Reddit's social environment. The game centers around collaborative battles against daily rotating bosses, each themed around different aspects of internet culture - from "The Lag Spike" (Gaming) to "The Algorithm" (Internet) to "The Cringe" (Memes).
+Raid Day is an action-packed browser-based boss battle game that delivers quick, engaging combat sessions perfect for Reddit's fast-paced environment. The game features a revolutionary session-based combat system where players engage in focused 2-minute battle sessions against daily rotating bosses themed around internet culture - from "The Lag Spike" (Gaming) to "The Algorithm" (Internet) to "The Cringe" (Memes).
 
-The game features a revolutionary energy-based combat system that eliminates traditional cooldown frustrations. Players receive 5 energy points that can be used immediately for burst combat, with individual 30-second cooldowns that allow for strategic timing and sustained engagement. This creates dynamic gameplay where timing and resource management are key to maximizing damage output.
+The game combines streamlined mechanics with engaging gameplay through simplified attack mechanics and session management. Players can unleash up to 10 attacks per 2-minute session with simple click-to-attack gameplay, featuring dynamic visual effects and immediate feedback for every action.
 
-**Current Implementation**: The game is fully playable with a complete 7-scene progression system, 4 unique character classes, advanced combat mechanics, and comprehensive visual effects. All game systems work with automatically generated placeholder graphics, providing the full boss battle experience while being ready for custom sprite integration.
+**Current Implementation**: The game is fully playable with a complete 5-scene progression system (Boot → Splash → Battle → Results → Victory), featuring the SessionSystem for structured 2-minute combat sessions with 10-attack limits, simplified click-to-attack mechanics with 0.8-second attack cooldowns, comprehensive visual effects including dynamic screen shake and floating damage numbers, and session-based gameplay with Reddit sharing integration. The game uses FIT scaling mode to maintain aspect ratio while filling the screen, providing an optimized boss battle experience that adapts to any device size (320x240 to 1920x1080) with mobile-first responsive design. All game systems work with automatically generated placeholder graphics, providing the complete boss battle experience while being ready for custom sprite integration.
+
+The latest update includes enhanced victory celebrations with spectacular boss death sequences featuring multiple explosion phases, enhanced screen effects with boss-themed color flashes, physics-based loot rain with different item types, and comprehensive Reddit integration for sharing victory achievements with the community.
+
+## What Makes Raid Day Innovative and Unique
+
+⚡ **Revolutionary Session-Based Combat**: Unlike traditional endless gameplay, Raid Day features structured 2-minute combat sessions with a maximum of 10 attacks per session. This creates intense, focused battles where every attack counts. The SessionSystem manages time limits, attack counting, and performance tracking, ensuring each session feels meaningful and complete. Players must strategically time their attacks to maximize damage output within the session constraints.
+
+🎯 **Simplified Click-to-Attack Mechanics**: The game features streamlined combat where players click the large "ATTACK" button to deal damage to the boss. Each attack has a brief cooldown (0.8 seconds) to prevent spam clicking while maintaining fast-paced action. The system provides immediate visual feedback for every attack, making combat feel responsive and satisfying.
+
+🎮 **Structured Session Management**: Each battle is a precisely timed 2-minute session with built-in limits:
+- **Time Pressure**: 2-minute countdown creates urgency and excitement
+- **Attack Limits**: Maximum 10 attacks per session prevents button mashing and creates strategic decision-making
+- **Session Stats**: Track attacks used, damage dealt, and performance metrics in real-time
+- **Immediate Results**: Quick transition to results screen with comprehensive session summary
+- **Replayability**: Jump back into battle instantly for another focused session
+
+⚔️ **Engaging Combat Feedback**: The game features rich visual feedback that makes every attack feel impactful:
+- **Attack Button**: Large, responsive button with success/error animations and cooldown prevention
+- **Screen Shake**: Dynamic camera shake scaled by attack impact (2px normal, 5px critical, 8px special)
+- **Floating Damage**: Color-coded damage numbers that float upward (yellow=normal, orange=critical)
+- **Boss Reactions**: Visual hit reactions with color flashes and knockback effects
+- **Attack Sequences**: 0.8-second attack animations where your character runs forward, attacks, and returns
+
+🎨 **Mobile-Optimized Visual Experience**: Every aspect is designed for maximum engagement across all devices:
+- **Responsive Scaling**: FIT scaling mode maintains aspect ratio while filling the screen for optimal viewing
+- **Cross-Platform Design**: Adapts seamlessly from mobile (320x240) to desktop (1920x1080) with consistent performance
+- **Touch-Friendly Controls**: Large buttons (60x60px minimum) optimized for mobile touch interaction
+- **Performance Optimization**: Dynamic quality adjustment with mobile-specific optimizations (limited to 10 particles on mobile)
+- **Professional UI**: Clean, readable interface with real-time session tracking that scales perfectly across devices
+
+🎆 **Spectacular Victory Celebrations**: When bosses are defeated, players experience:
+- **Enhanced Boss Death Sequences**: Multi-phase explosions with 8 secondary bursts in circular patterns
+- **Boss-Themed Visual Effects**: Color flashes matching each boss's theme (red for Lag Spike, green for Algorithm, etc.)
+- **Physics-Based Loot Rain**: Realistic falling loot items with bounce physics and different rarities
+- **Community Victory Posts**: Automatic Reddit post creation celebrating the defeat with top contributor recognition
+- **Progressive Rewards**: XP gains, level progression, and unlockable content for continued engagement
+
+🗓️ **Daily Boss Themes**: Seven unique themed bosses that reflect internet culture:
+- **Sunday**: "The Cringe" (Memes) - 50,000 HP with outdated memes and cringe content
+- **Monday**: "The Lag Spike" (Gaming) - 50,000 HP with connection issues and gaming frustrations
+- **Tuesday**: "The Algorithm" (Internet) - 50,000 HP with data processing and internet algorithms
+- **Wednesday**: "The Influencer" (Social Media) - 50,000 HP with social pressure and influence culture
+- **Thursday**: "The Deadline" (Work) - 50,000 HP with time stress and work pressure
+- **Friday**: "The Spoiler" (Entertainment) - 50,000 HP with plot reveals and entertainment spoilers
+- **Saturday**: "The Referee" (Sports) - 50,000 HP with penalty calls and sports controversies
+
+Each boss has balanced 50,000 HP designed for community collaboration, with thematic personalities and unique visual effects. Bosses rotate daily based on the day of the week, ensuring fresh content every day.
+
+📱 **Mobile-First Responsive Design**: 
+- **FIT Scaling Mode**: Game maintains perfect aspect ratio while filling the screen (320x240 to 1920x1080)
+- **Touch-Optimized Controls**: Large buttons (60x60px minimum) with visual feedback and hover effects
+- **Cross-Platform**: Works seamlessly on desktop and mobile with consistent 60fps experience
+- **Performance Optimized**: WebGL rendering with Canvas fallback, pixel art optimization, and mobile-specific adjustments
+- **Adaptive Quality**: Dynamic performance monitoring with automatic quality adjustments for optimal mobile experience
+
+🌐 **Reddit Integration**: Built for seamless Reddit community engagement:
+- **Session Sharing**: Share your damage totals directly to r/RaidDay with formatted posts including damage dealt, boss name, and player rank
+- **Real-time Boss HP**: Shared boss HP that persists across all players and updates in real-time
+- **Community Stats**: Live fighter count and community progress tracking on the splash screen
+- **Victory Posts**: Automatic creation of celebration posts when bosses are defeated, featuring top contributors and full leaderboards
+- **Results Screen**: Clean summary with one-click Reddit sharing and replay functionality
+- **Instant Access**: One-click "FIGHT NOW!" entry from Reddit posts to immersive full-screen battle
 
 ## Game Architecture & Technical Implementation
 
-Raid Day runs as a Phaser.js 3.70+ application at 800x600 resolution with responsive FIT scaling that adapts to any screen size while maintaining aspect ratio. The game uses WebGL rendering with Canvas fallback, pixel art optimization, and Arcade Physics for smooth 60fps gameplay across desktop and mobile devices.
+Raid Day runs as a Phaser.js 3.70+ application with mobile-optimized FIT scaling that maintains perfect aspect ratio while adapting to any screen size (320x240 minimum to 1920x1080 maximum). The game uses WebGL rendering with Canvas fallback, pixel art optimization, and Arcade Physics for smooth 60fps gameplay across desktop and mobile devices. The FIT scaling mode ensures optimal viewing experience with consistent aspect ratio across all devices while maximizing screen usage.
+
+### Phaser.js Configuration
+- **Engine**: Phaser.js 3.70+ with AUTO renderer selection (WebGL preferred, Canvas fallback)
+- **Canvas Size**: 800x600 base resolution with FIT scaling to maintain aspect ratio while maximizing screen usage
+- **Physics**: Arcade Physics with zero gravity for top-down battle view
+- **Rendering**: Pixel art optimized with antialiasing and round pixels enabled
+- **Performance**: 60fps target with mobile-specific optimizations and dynamic quality adjustment
+- **Responsive Design**: Mobile-first approach with touch-friendly controls and performance monitoring
 
 ### Complete Scene Flow System
-The game features 7 fully implemented scenes with smooth transitions:
+The game features 5 fully implemented scenes with smooth transitions and state management:
 
-1. **Boot Scene**: Quick asset loading with automatic placeholder texture generation
-2. **Preloader Scene**: Main asset loading with progress bar and helpful gameplay tips
-3. **Splash Scene**: Main menu showing today's boss theme with navigation options
-4. **HowToPlay Scene**: Comprehensive tutorial explaining all game mechanics
-5. **ClassSelect Scene**: Interactive character class selection with detailed ability descriptions
-6. **Battle Scene**: Full combat system with energy management, visual effects, and boss battles
-7. **Victory Scene**: Animated victory sequence with physics-based loot rain, XP progression, and leaderboards
+1. **Boot Scene**: Quick asset loading with automatic placeholder texture generation for missing sprites
+2. **Splash Scene**: Main menu showing today's boss theme, community stats, and "FIGHT NOW!" button
+3. **Battle Scene**: Full combat system with energy management, combo mechanics, 2-minute timed sessions, and real-time boss battles
+4. **Results Scene**: Session summary with damage totals, boss progress, player ranking, and Reddit sharing options
+5. **Victory Scene**: Animated victory sequence with physics-based loot rain, progression rewards, and community celebration
 
 ### Advanced Systems Architecture
-- **EnergySystem**: 5-point energy management with individual 30-second cooldowns
-- **CombatSystem**: Damage calculations with class modifiers and boss phase resistance
-- **SynchronizationSystem**: Real-time boss HP sync and community DPS tracking (10-second accuracy)
-- **AttackSequence**: Cinematic 1.5-second attack animations with 6 distinct phases
-- **ParticleSystem**: Mobile-optimized particle effects with object pooling
-- **CameraEffectsSystem**: Dynamic screen shake, hit pause, and motion trails
-- **CommunityBuffSystem**: Healer's buff aura affecting next 5 community attacks
+- **SessionSystem**: 2-minute timed sessions with 10-attack limits, real-time performance tracking, and automatic scene transitions
+- **DamageCalculator**: Simplified damage calculations with balanced class-based ranges (160-240 damage) and 15% critical hit chance
+- **ActionButton**: Responsive button system with 0.8-second cooldown prevention, success/error animations, and mobile optimization
+- **Visual Effects**: Dynamic screen shake (2px normal, 5px critical, 8px boss phase), color-coded floating damage numbers, boss hit reactions, and particle effects
+- **UI Systems**: Responsive HUD with real-time boss HP bars, session countdown timers, attack counters, and damage tracking
+- **Animation Systems**: Precise 0.8-second attack sequences (0.3s run forward, 0.2s attack, 0.3s run back), boss phase transitions, and victory celebrations with physics-based loot rain
+- **Mobile Optimization**: Touch-friendly controls with 60x60px minimum targets, responsive scaling, and performance adjustments for mobile devices
 
-## Game Overview
+## How to Play Raid Day
 
-Raid Day is a **fully playable collaborative boss battle experience** where Reddit users join forces to defeat powerful daily bosses. The game runs at 800x600 resolution with responsive scaling and features complete placeholder asset generation for immediate gameplay testing.
+### Getting Started
 
-### Core Gameplay Loop
+1. **Launch the Game**: Click the "FIGHT NOW!" button on the Reddit post to open Raid Day in full screen
+2. **Boot & Loading**: The game automatically loads sprite images and creates placeholder textures for any missing assets
+3. **Main Menu (Splash)**: You'll see today's boss theme with real-time HP bar, community stats, and "FIGHT NOW!" button to enter battle
+4. **Battle**: Engage in fast-paced 2-minute combat sessions with simple click-to-attack mechanics
+5. **Results**: View your session summary with damage totals and sharing options
+6. **Victory**: If the boss is defeated, celebrate with spectacular animated victory sequences and rewards
 
-1. **Daily Boss Rotation**: Each day features a unique themed boss with distinct mechanics and personality
-2. **Character Class Selection**: Choose from 4 unique classes with different playstyles and special abilities
-3. **Strategic Energy Combat**: Manage 5 energy points with individual 30-second cooldowns for optimal damage
-4. **Collaborative Battles**: Fight alongside other Reddit users in real-time community battles
-5. **Cinematic Combat**: Every attack triggers a 1.5-second animated sequence with visual effects
-6. **Victory Celebrations**: Defeat bosses to unlock rewards, XP progression, and leaderboards
+### Step-by-Step Gameplay
 
-## Game Overview
+#### 🚀 Scene Progression (5 Complete Scenes)
+1. **Boot Scene**: Quick asset loading with automatic placeholder texture generation for missing sprites
+2. **Splash Scene**: Main menu showing today's boss theme, real-time shared HP bar, community fighter count, and "FIGHT NOW!" button for instant battle entry
+3. **Battle Scene**: Full combat system with session management and 2-minute timed battles
+4. **Results Scene**: Session summary showing damage dealt, boss progress, and Reddit sharing options
+5. **Victory Scene**: Spectacular animated victory sequence with enhanced boss death effects, physics-based loot rain, and progression rewards (when boss is defeated)
 
-Raid Day is a **fully playable collaborative boss battle experience** where Reddit users join forces to defeat powerful daily bosses. The game runs at 800x600 resolution with responsive scaling and features complete placeholder asset generation for immediate gameplay testing.
+#### ⚡ Session-Based Combat System
 
-### Core Gameplay Loop
+**How Sessions Work**:
+- Each battle session lasts exactly 2 minutes with a maximum of 10 attacks
+- Click the large "ATTACK" button to deal damage to the boss
+- Each attack has a brief 0.8-second cooldown to prevent spam clicking
+- Session ends automatically when time expires OR when you use all 10 attacks
+- Visual indicators show time remaining and attacks used in real-time
 
-1. **Daily Boss Rotation**: Each day features a unique themed boss with distinct mechanics and personality
-2. **Character Class Selection**: Choose from 4 unique classes with different playstyles and special abilities
-3. **Strategic Energy Combat**: Manage 5 energy points with individual 30-second cooldowns for optimal damage
-4. **Collaborative Battles**: Fight alongside other Reddit users in real-time community battles
-5. **Cinematic Combat**: Every attack triggers a 1.5-second animated sequence with visual effects
-6. **Victory Celebrations**: Defeat bosses to unlock rewards, XP progression, and leaderboards
+**Combat Actions**:
+- **Normal Attack**: Click "ATTACK" button to perform attacks (counts toward 10-attack limit)
+- **Attack Feedback**: Each attack triggers a 0.8-second animation sequence where your character runs forward, attacks, and returns
+- **Visual Effects**: Screen shake, floating damage numbers, and boss hit reactions provide immediate feedback
+- **Session Tracking**: Monitor time remaining and attacks used in the bottom-left corner
 
-## Complete Game Architecture
+#### 🎯 Combat Mechanics
 
-Raid Day is built as a sophisticated Phaser.js 3.70+ application with a comprehensive scene-based architecture:
+**Attack System**:
+1. **Click to Attack**: Simply click the large "ATTACK" button to deal damage
+2. **Damage Calculation**: Each attack deals 160-240 damage with minimal class differences (Warrior: 180-220, Mage: 170-230, Rogue: 160-240, Healer: 175-225)
+3. **Critical Hits**: 15% chance for critical hits that deal 3x damage (shown in orange)
+4. **Visual Feedback**: Watch your character animate forward, attack the boss, and return to position in a 0.8-second sequence
+5. **Cooldown Prevention**: Button becomes temporarily disabled after each attack to prevent spam clicking
 
-### Scene Flow System
-- **Boot Scene**: Quick asset loading with automatic placeholder texture generation
-- **Preloader Scene**: Main asset loading with progress bar and helpful gameplay tips
-- **Splash Scene**: Main menu showing today's boss theme with navigation options
-- **HowToPlay Scene**: Comprehensive tutorial explaining all game mechanics
-- **ClassSelect Scene**: Interactive character class selection with detailed ability descriptions
-- **Battle Scene**: Full combat system with energy management, visual effects, and boss battles
-- **Victory Scene**: Animated victory sequence with physics-based loot rain, XP progression, and leaderboards
+**Boss Mechanics**:
+- **Shared HP**: All players attack the same boss with 50,000 HP
+- **Phase Changes**: Boss enters Phase 2 at 75% HP with enhanced visual effects
+- **Hit Reactions**: Boss flashes red and shakes when hit, providing satisfying feedback
+- **Daily Rotation**: Different themed boss each day of the week
 
-### Advanced Systems Architecture
-- **EnergySystem**: 5-point energy management with individual 30-second cooldowns
-- **CombatSystem**: Damage calculations with class modifiers and boss phase resistance
-- **AnimationSystem**: Advanced sprite management with animation queueing and state tracking
-- **ParticleSystem**: Mobile-optimized particle effects with object pooling (20 particles mobile, 50 desktop)
-- **AttackSequence**: Cinematic 1.5-second attack animations with 6 distinct phases
-- **CameraEffectsSystem**: Dynamic screen shake, hit pause, and motion trails
-- **CommunityBuffSystem**: Healer's buff aura affecting next 5 community attacks
+#### 🗓️ Daily Boss Rotation
 
-### Comprehensive UI Framework
-- **BattleHUD**: Responsive battle interface with boss HP, energy indicators, and session stats
-- **ActionButton**: Interactive buttons with hover effects, press animations, and state management
-- **DamageNumber**: Color-coded floating damage numbers with pooling system
-- **StatusMessage**: Combat feedback messages with animation queuing
+Each day features a unique themed boss:
+
+**Monday - "The Lag Spike" (Gaming)**
+- HP: 50,000 | Theme: Gaming frustrations and connection issues
+
+**Tuesday - "The Algorithm" (Internet)**
+- HP: 50,000 | Theme: Data processing and internet algorithms
+
+**Wednesday - "The Influencer" (Social Media)**
+- HP: 50,000 | Theme: Social media pressure and influence culture
+
+**Thursday - "The Deadline" (Work)**
+- HP: 50,000 | Theme: Work stress and time pressure
+
+**Friday - "The Spoiler" (Entertainment)**
+- HP: 50,000 | Theme: Entertainment spoilers and plot reveals
+
+**Saturday - "The Referee" (Sports)**
+- HP: 50,000 | Theme: Sports penalties and referee calls
+
+**Sunday - "The Cringe" (Memes)**
+- HP: 50,000 | Theme: Outdated memes and internet cringe culture
+
+#### 🎮 Complete Gameplay Flow
+
+**Getting Into Battle (10 seconds)**:
+1. Click "FIGHT NOW!" on the Reddit post to open the game in immersive full-screen mode
+2. **Boot Scene**: Quick asset loading with automatic placeholder texture generation for all sprites
+3. **Splash Scene**: See today's boss theme, real-time shared HP bar showing community progress, and click "FIGHT NOW!" to enter battle
+
+**Combat Phase (2 minutes, 10 attacks maximum)**:
+4. **Battle Scene**: Start your 2-minute session with 10 attacks available
+5. Click "ATTACK" repeatedly to deal damage and watch your character animate
+6. See boss HP decrease with each hit and watch for Phase 2 transition at 75% HP
+7. Monitor your session progress: time remaining and attacks used (displayed in bottom-left)
+8. Experience rich visual feedback: screen shake, floating damage numbers, and boss reactions
+9. Session ends automatically when time expires OR when you use all 10 attacks
+
+**Session Completion (30 seconds)**:
+10. **Results Scene**: View comprehensive session summary when the session ends
+11. See detailed statistics: total damage dealt, boss HP remaining, boss defeat percentage, and your current rank
+12. Share your session to r/RaidDay with damage totals or click "Fight Again" for another session
+13. Get immediate feedback on your contribution to the community boss battle
+
+**Victory Celebration (if boss defeated)**:
+14. **Victory Scene**: Experience spectacular boss death sequence with enhanced multi-phase explosions
+15. **Enhanced Visual Effects**: Watch boss-themed color flashes and massive screen shake (15px intensity)
+16. **Physics-Based Loot Rain**: See realistic falling loot items with bounce physics - coins, gems, potions, scrolls, chests, and rare stars
+17. **Community Recognition**: Automatic Reddit victory post creation featuring top contributors and full leaderboard
+18. **Progression Rewards**: Gain XP, level up, and unlock new content for continued engagement
+19. **Next Boss Preview**: See tomorrow's boss with countdown timer and anticipation-building effects
+
+#### 🎯 Strategy Tips
+
+**Maximize Your Damage**:
+- **Click Rapidly**: Attack as quickly as the cooldown allows (every 0.8 seconds)
+- **Watch for Crits**: Orange damage numbers indicate critical hits for 3x damage
+- **Time Management**: You have 2 minutes but only 10 attacks - use them wisely
+- **Visual Cues**: Pay attention to attack cooldown and session timer
+
+**Session Optimization**:
+- **Consistent Attacks**: Maintain steady attack rhythm throughout your session
+- **Boss Phases**: Expect increased visual effects when boss reaches Phase 2 at 75% HP
+- **Attack Budget**: Plan your 10 attacks strategically across the 2-minute window
+
+**Community Participation**:
+- **Share Your Results**: Use the built-in Reddit sharing to celebrate your damage contributions
+- **Track Progress**: Monitor the shared boss HP bar to see community progress
+- **Victory Participation**: Be part of the community celebration when bosses are defeated
 
 ## Current Game State
 
@@ -97,374 +233,52 @@ Raid Day is a **fully playable and complete boss battle experience** featuring:
 ### ✅ Complete Implementation Status
 
 **Fully Functional Game Systems:**
-- **Complete 7-Scene Progression**: Boot → Preloader → Splash → HowToPlay → ClassSelect → Battle → Victory
-- **4 Unique Character Classes**: Warrior, Mage, Rogue, and Healer with distinct abilities and playstyles
-- **Advanced Combat System**: Real-time battles with cinematic 1.5-second attack sequences
-- **Strategic Energy Management**: 5-point energy system with individual cooldowns and full-energy bonuses
-- **Comprehensive Visual Effects**: Particle systems, screen shake, floating damage numbers, and status messages
-- **Mobile-Optimized Design**: Responsive 800x600 canvas with touch controls and performance optimization
+- **Complete 5-Scene Progression**: Boot → Splash → Battle → Results → Victory with smooth transitions
+- **Session-Based Combat**: 2-minute focused sessions with 10-attack limits and immediate results
+- **Click-to-Attack Mechanics**: Simple, responsive combat with 0.8-second attack sequences and cooldown prevention
+- **Comprehensive Visual Effects**: Screen shake, floating damage numbers, boss hit reactions, and attack animations
+- **Mobile-Optimized Responsive Design**: FIT scaling mode maintains aspect ratio while maximizing screen usage across all devices (320x240 to 1920x1080)
 - **Daily Boss Rotation**: 7 themed bosses representing different aspects of internet culture
-- **Victory Celebrations**: Physics-based loot rain, animated XP progression, and leaderboards
+- **Reddit Integration**: Session sharing and community engagement features
 
 **Advanced Technical Features:**
-- **Smart Asset Loading**: Loads static sprite images with automatic fallback to generated placeholder textures
-- **Responsive Canvas Scaling**: Maintains 800x600 aspect ratio across all devices with FIT scaling mode
-- **Performance Optimization**: Dynamic particle limits (20 mobile, 50 desktop) and mobile-specific optimizations
+- **Smart Asset Loading**: Loads static sprite images with automatic fallback to generated placeholder textures (32x32 characters, 128x128 bosses)
+- **Mobile-Optimized Responsive Scaling**: Uses FIT scaling mode to maintain aspect ratio while maximizing screen usage with responsive design
+- **Performance Optimization**: 60fps targeting with mobile-specific optimizations and dynamic quality adjustment
 - **Error Handling**: Graceful fallbacks for missing assets with automatic placeholder generation
-- **Cross-Platform Compatibility**: WebGL/Canvas fallback with consistent 60fps experience
+- **Cross-Platform Compatibility**: WebGL/Canvas fallback with consistent experience across desktop and mobile browsers
+- **Touch Controls**: Mobile-optimized with large touch targets (60x60px minimum) and visual feedback
 
 **Ready for Production:**
 - All core gameplay mechanics are fully implemented and tested
-- Complete UI system with responsive design and accessibility features
-- Comprehensive animation system with state management and queueing
-- Advanced particle effects with object pooling for optimal performance
-- Full mobile support with touch controls and haptic feedback
-
-### 🔄 Server Integration Ready
-
-The client-side game is complete and ready for server integration:
-- Real-time boss HP synchronization across all players
-- Community damage tracking and live activity feeds
-- Player progression persistence and cross-session statistics
-- Leaderboards with real Reddit usernames and rankings
-
-## What Makes Raid Day Innovative and Unique
-
-🎯 **Revolutionary Energy System**: Unlike traditional cooldown-based games, Raid Day features a fully implemented 5-point energy system where each attack consumes 1 energy point with individual 30-second cooldowns. This eliminates the frustration of waiting for a single long cooldown - instead, you can unleash 5 attacks immediately, then watch as energy points regenerate individually. Full energy (5/5) provides a 20% damage bonus to your first attack, rewarding strategic timing and patience. The system is visualized with live cooldown timers on each energy indicator, making resource management intuitive and engaging.
-
-⚔️ **Cinematic Combat System**: Every attack triggers a fully animated 1.5-second sequence that makes combat feel impactful and satisfying. Unlike typical browser games with instant damage numbers, Raid Day creates movie-like combat sequences:
-- **Phase 1**: Your character runs toward the boss (300ms)
-- **Phase 2**: Attack animation with weapon motion and screen shake (200ms)
-- **Phase 3**: Particle effects spawn at impact point (100ms)
-- **Phase 4**: Floating damage numbers with boss hit reaction and color flash (400ms)
-- **Phase 5**: Critical hit pause for dramatic impact (100ms for crits only)
-- **Phase 6**: Character returns to starting position (400ms)
-
-This system transforms simple clicking into engaging, cinematic combat that feels satisfying every time.
-
-🎨 **Four Distinct Character Classes**: Each class offers unique combat mechanics and playstyles:
-- **Warrior** (120 base damage): Balanced high-damage fighter with devastating triple-hit "Charge Attack" special ability
-- **Mage** (100 base damage): Magical attacks with explosive "Fireball" special abilities and enhanced screen shake effects  
-- **Rogue** (90 base damage): 30% critical hit chance with 3x damage multipliers and teleporting "Backstab" abilities
-- **Healer** (80 base damage): Support-focused with "Buff Aura" that enhances the next 5 community attacks by 20%
-
-🗓️ **Daily Boss Rotation System**: Seven unique themed bosses that reflect internet culture and daily experiences:
-- **Monday**: "The Lag Spike" (Gaming) - 80,000 HP with glitchy effects and "Connection unstable!" attacks
-- **Tuesday**: "The Algorithm" (Internet) - 85,000 HP with data stream effects and "Processing..." messages
-- **Wednesday**: "The Influencer" (Social Media) - 75,000 HP with selfie flash attacks and "Like and subscribe!" requests
-- **Thursday**: "The Deadline" (Work) - 90,000 HP with stress-inducing effects and "Time is running out!" pressure
-- **Friday**: "The Spoiler" (Entertainment) - 70,000 HP with plot-revealing "The ending is..." attacks
-- **Saturday**: "The Referee" (Sports) - 95,000 HP with whistle penalties and "FOUL!" calls
-- **Sunday**: "The Cringe" (Memes) - 65,000 HP with embarrassing "So cringe..." outdated meme attacks
-
-Each boss has unique HP values, attack patterns, and thematic messages that make every day feel fresh and relevant.
-
-✨ **Advanced Visual Effects Framework**: 
-- **CameraEffectsSystem**: Dynamic screen shake scaled by attack type (2px normal, 5px critical, 8px special)
-- **ParticleSystem**: Mobile-optimized particle effects (20 particles mobile, 50 desktop) with object pooling
-- **DamageNumber System**: Color-coded floating damage numbers (yellow=normal, orange=critical, purple=special)
-- **StatusMessage System**: Combat feedback messages like "CRITICAL!", "SLASH!", "PHASE 2!"
-- **ActionButton System**: Interactive UI with hover effects, press animations, and state management
-- **BattleHUD System**: Responsive battle interface with boss HP, energy indicators, and session stats
-
-📱 **Mobile-First Design**: 
-- **Responsive Canvas**: 800x600 game scales automatically to any screen size while maintaining aspect ratio
-- **Touch Controls**: 44x44px minimum button sizes meeting accessibility standards with haptic feedback
-- **Performance Optimization**: Dynamic particle limits (20 mobile vs 50 desktop), automatic quality adjustment
-- **Cross-Platform**: Works seamlessly on desktop browsers, mobile browsers, and Reddit's mobile app
-
-🌐 **Real-Time Synchronization**: Built with advanced server integration for live multiplayer experience:
-- **10-Second Boss HP Sync**: Real-time boss health updates across all players with sub-10-second accuracy
-- **Live Activity Feed**: See recent attacks from other Reddit users with usernames and damage dealt
-- **Community DPS Tracking**: Real-time statistics showing attacks per minute and active player count
-- **Live Leaderboards**: Swipe-up overlay showing Top 20 players with real-time ranking updates
-- **Reddit User Integration**: Displays actual Reddit usernames, avatars, and user data in-game
-
-🎮 **Complete Scene-Based Experience**: 
-- **Tutorial System**: Comprehensive HowToPlay scene explaining all game mechanics and strategies
-- **Class Selection**: Interactive character selection with detailed ability descriptions and visual previews
-- **Victory Celebrations**: Physics-based loot rain, animated XP progression, and community leaderboards
-- **Responsive UI Framework**: Complete BattleHUD system with energy indicators, boss HP, and session stats
-
-## Technology Stack
-
-- **[Devvit](https://developers.reddit.com/)**: Reddit's developer platform for seamless community integration
-- **[Phaser.js 3.70+](https://phaser.io/)**: Advanced 2D WebGL/Canvas game engine with pixel art rendering, physics, and animation systems
-- **[Vite](https://vite.dev/)**: Lightning-fast build tool for optimized client and server compilation with hot reloading
-- **[Express](https://expressjs.com/)**: Robust Node.js backend framework for API endpoints and Reddit integration
-- **[TypeScript](https://www.typescriptlang.org/)**: Type-safe development with strict checking across client/server/shared code
-- **[Redis](https://redis.io/)**: High-performance data persistence via Devvit SDK for boss HP, player stats, and leaderboards
-
-## Architecture
-
-- **Client-Side Game Engine**: Phaser.js handles all game logic, animations, and visual effects
-- **Modular Systems**: Separate systems for energy management, combat, animations, particles, and UI
-- **Scene-Based Architecture**: 7 distinct scenes with smooth transitions and state management
-- **Mobile-First Design**: Responsive canvas with touch controls and performance optimization
-- **Component-Based UI**: Reusable UI components with state management and visual feedback
-
-## How to Play Raid Day
-
-### Getting Started
-
-1. **Launch the Game**: Click the "Play" button on the Reddit post to open Raid Day in full screen
-2. **Boot & Loading**: The game automatically loads sprite images and creates placeholder textures for any missing assets
-3. **Main Menu (Splash)**: You'll see today's boss theme with two options:
-   - **"ENTER BATTLE"**: Jump directly into class selection and battle
-   - **"HOW TO PLAY"**: Access the comprehensive tutorial system explaining all mechanics
-4. **Tutorial (Recommended)**: Learn about combat mechanics, energy system, class abilities, and strategies
-5. **Class Selection**: Choose your character class from four unique options with distinct playstyles and special abilities
-6. **Battle**: Engage in cinematic combat with energy management and visual effects
-7. **Victory**: Celebrate with physics-based loot rain and progression rewards
+- Complete UI system with mobile-first responsive design and session tracking
+- Simplified combat system that's easy to learn and immediately engaging
+- Advanced visual effects with optimized performance for all devices
+- Full mobile support with touch-friendly controls (60x60px minimum targets) and responsive design
+- Performance monitoring system with automatic quality adjustments for optimal mobile experience
 
 ### What You'll Experience
 
-**Immediate Gameplay**: The game is fully functional right now with all systems working. While it uses placeholder graphics for sprites, every mechanic from energy management to boss battles to victory celebrations is complete and playable.
+**Immediate Gameplay**: The game is fully functional right now with all systems working. While it uses automatically generated placeholder graphics for sprites (32x32 characters, 128x128 bosses), every mechanic from session management to attack systems to boss battles is complete and playable.
 
-**Visual Polish**: The game features a dark battle atmosphere theme, responsive UI scaling, and comprehensive visual effects including particle systems, screen shake, floating damage numbers, and animated status messages.
+**Mobile-Optimized Responsive Experience**: The game uses FIT scaling mode to maintain perfect aspect ratio while maximizing screen usage, providing an optimal boss battle experience that adapts to any device size from mobile phones (320x240) to large desktop monitors (1920x1080) with consistent 60fps performance and mobile-first design principles.
 
-**Real-Time Multiplayer**: Experience live synchronization with other Reddit users through the SynchronizationSystem, which provides 10-second boss HP updates, live activity feeds showing recent attacks, and real-time leaderboards accessible via swipe gestures.
+**Simple Yet Engaging Combat**: Experience streamlined click-to-attack combat with satisfying visual feedback, dynamic screen shake effects (2px-8px intensity), color-coded floating damage numbers (yellow=normal, orange=critical), boss hit reactions with color flashes, and immediate response to every action through precisely timed 0.8-second attack sequences.
 
-### Complete Game Flow
+## Technology Stack
 
-#### 🚀 Scene Progression (7 Complete Scenes)
-1. **Boot Scene**: Quick asset loading with automatic placeholder texture generation for missing sprites
-2. **Preloader Scene**: Main asset loading with progress bar and helpful gameplay tips (randomly selected)
-3. **Splash Scene**: Main menu showing today's boss theme with "ENTER BATTLE" and "HOW TO PLAY" options
-4. **HowToPlay Scene**: Comprehensive tutorial explaining all game mechanics, controls, and strategies
-5. **ClassSelect Scene**: Interactive character class selection with detailed ability descriptions and visual previews
-6. **Battle Scene**: Full combat system with energy management, cinematic attack sequences, and boss battles
-7. **Victory Scene**: Animated victory sequence with physics-based loot rain, XP progression, and community leaderboards
+- **[Devvit](https://developers.reddit.com/)**: Reddit's developer platform for seamless community integration and hosting
+- **[Phaser.js 3.70+](https://phaser.io/)**: Advanced 2D WebGL/Canvas game engine with pixel art rendering, Arcade Physics, and comprehensive animation systems
+- **[Vite](https://vite.dev/)**: Lightning-fast build tool for optimized client and server compilation with hot reloading and TypeScript support
+- **[Express](https://expressjs.com/)**: Robust Node.js backend framework for API endpoints and Reddit integration
+- **[TypeScript](https://www.typescriptlang.org/)**: Type-safe development with strict checking across client/server/shared code and comprehensive type definitions
+- **[Redis](https://redis.io/)**: High-performance data persistence via Devvit SDK for boss HP, player stats, session data, and community tracking
 
-Each scene is fully responsive and optimized for both mobile and desktop play, with smooth transitions and state management between scenes.
+## Architecture
 
-#### ⚔️ Character Classes (Choose Your Playstyle)
-
-**🛡️ Warrior** (120 Base Damage)
-- **Playstyle**: Balanced high-damage fighter with reliable combat effectiveness
-- **Special Ability**: "Charge Attack" - Triple-hit combo with escalating screen shake effects
-- **Animation**: Charges forward with enhanced speed, performs 3 hits with increasing intensity
-- **Best For**: Players who want consistent, straightforward damage output
-
-**🔮 Mage** (100 Base Damage)  
-- **Playstyle**: Magical attacks with spectacular explosive visual effects
-- **Special Ability**: "Fireball" - Projectile attack with massive explosion and screen shake
-- **Animation**: Charges up with blue glow, launches fireball projectile, creates massive explosion
-- **Best For**: Players who enjoy visually impressive spell-based combat
-
-**🗡️ Rogue** (90 Base Damage)
-- **Playstyle**: High-risk, high-reward with 30% critical hit chance (3x damage)
-- **Special Ability**: "Backstab" - Teleport behind boss with guaranteed critical hit and time-freeze effects
-- **Animation**: Creates shadow clone, teleports behind boss, triggers slow-motion critical strike
-- **Best For**: Risk/reward players who love unpredictable high damage spikes
-
-**💚 Healer** (80 Base Damage)
-- **Playstyle**: Support-focused with unique community benefits
-- **Special Ability**: "Buff Aura" - Enhances the next 5 community attacks by 20% damage
-- **Animation**: Creates expanding aura rings, glows with healing light, sparkle particles
-- **Best For**: Team players who want to support the community effort
-
-#### ⚡ Revolutionary Energy System
-
-**How It Works**:
-- Start each session with 5 full energy points (displayed as green circles in the HUD)
-- Each attack consumes 1 energy point with a 30-second individual cooldown
-- Attack with full energy (5/5) for a 20% damage bonus on your first strike
-- Energy points regenerate individually - no need to wait for all 5 to recharge
-- Visual indicators show live cooldown timers on each energy point
-
-**Combat Actions**:
-- **Normal Attack**: Click "ATTACK" button or press SPACEBAR to perform a cinematic 1.5-second sequence
-- **Special Ability**: Click "SPECIAL" button or press SHIFT for enhanced damage (costs 3 energy, usable once per session)
-- **Critical Hits**: Rogues have 30% chance, others have 10% (all crits deal 3x damage with hit pause effects)
-
-#### 🎬 Cinematic Attack Sequence (1.5 seconds total)
-1. **Run Forward** (300ms): Character runs toward the boss with scaling animation
-2. **Attack Animation** (200ms): Class-specific attack with weapon motion and screen shake
-3. **Particle Effects** (100ms): Particle effects spawn at impact point with pooled system
-4. **Damage Display** (400ms): Color-coded floating damage numbers with boss hit reaction
-5. **Hit Pause** (100ms): Critical hit pause with time-freeze for dramatic impact
-6. **Run Back** (400ms): Character returns to starting position
-
-#### 🐉 Daily Boss Rotation
-
-Each day features a unique themed boss with distinct mechanics:
-
-**Monday - "The Lag Spike" (Gaming)**
-- HP: 80,000 | Level: 45 | Attack: "Connection unstable!" every 8 seconds
-
-**Tuesday - "The Algorithm" (Internet)**
-- HP: 85,000 | Level: 47 | Attack: "Processing..." every 7 seconds
-
-**Wednesday - "The Influencer" (Social Media)**
-- HP: 75,000 | Level: 42 | Attack: "Like and subscribe!" every 6 seconds
-
-**Thursday - "The Deadline" (Work)**
-- HP: 90,000 | Level: 50 | Attack: "Time is running out!" every 5 seconds
-
-**Friday - "The Spoiler" (Entertainment)**
-- HP: 70,000 | Level: 40 | Attack: "The ending is..." every 9 seconds
-
-**Saturday - "The Referee" (Sports)**
-- HP: 95,000 | Level: 52 | Attack: "FOUL!" every 4 seconds
-
-**Sunday - "The Cringe" (Memes)**
-- HP: 65,000 | Level: 38 | Attack: "So cringe..." every 10 seconds
-
-#### 🎮 Step-by-Step Gameplay
-
-**Getting Into Battle (30 seconds)**:
-1. Click "Play" on the Reddit post to open the game in full screen
-2. **Boot Scene**: Quick asset loading with automatic placeholder texture generation
-3. **Preloader Scene**: Watch the progress bar as the game loads (shows helpful tips like "Rogues have 30% critical hit chance!")
-4. **Splash Scene**: See today's boss theme and choose "ENTER BATTLE" or "HOW TO PLAY"
-
-**Character Selection (30 seconds)**:
-5. **ClassSelect Scene**: Select from 4 unique character classes with different abilities and descriptions
-6. Click "START BATTLE" to enter combat with your chosen class
-
-**Combat Phase (2-5 minutes)**:
-7. **Battle Scene**: Start with 5 energy points (green circles in the HUD)
-8. Click "ATTACK" or press SPACEBAR to fight with cinematic 1.5-second sequences
-9. Use "SPECIAL" or press SHIFT for powerful abilities (once per session, costs 3 energy)
-10. Watch boss phases change at 75% HP with enhanced effects and "PHASE 2!" message
-11. See other players' community attacks appear as visual effects through real-time synchronization
-12. Monitor your session damage, rank, and active raiders in the side panel
-13. Access live leaderboards by swiping up (mobile) or clicking the leaderboard button
-14. View recent attacks from other Reddit users in the live activity feed
-
-**Victory Celebration (1-2 minutes)**:
-15. **Victory Scene**: Enjoy explosive boss death animation with massive screen shake
-16. Watch physics-based loot rain fall from the sky with different item types
-17. See character level up with animated XP progression and experience bars
-18. Check leaderboards and rankings against other players (Top 5 contributors)
-19. Preview tomorrow's boss with countdown timer and theme information
-20. Share your session damage to Reddit or return to the main menu
-
-#### 🎯 Battle Interface
-
-**Top HUD**: Boss name, level, HP bar with real-time updates
-**Bottom HUD**: Energy indicators with live cooldown timers, ATTACK/SPECIAL buttons
-**Side Panel**: Session damage stats, player ranking, active community raiders
-
-#### 🎨 Visual Feedback System
-
-**Damage Numbers**: Yellow (normal), Orange (critical), Purple (special), Gray (community)
-**Status Messages**: "CRITICAL!", "SLASH!", "PHASE 2!", "VICTORY!" with unique animations
-**Screen Effects**: 2px (normal), 5px (critical), 8px (special/phase change) camera shake
-**Particle Effects**: Mobile-optimized with object pooling (20 mobile, 50 desktop particles)
-
-#### 🎮 Controls
-
-**Desktop**: Mouse clicks for UI, SPACEBAR (attack), SHIFT (special ability)
-**Mobile**: Touch controls with 44x44px minimum button sizes, haptic feedback, responsive layout
-
-### Advanced Strategy Tips
-
-**Energy Optimization**: Always start battles with full energy for the 20% damage bonus
-**Class Strategies**: Warrior for consistent damage, Mage for visual spectacle, Rogue for high crits, Healer for team support
-**Boss Phases**: Focus on consistent damage in Phase 1, expect 10% resistance in Phase 2
-**Community Coordination**: Healers can buff community attacks, coordinate for maximum effect
-
-## Development
-
-### Setup
-```bash
-npm install
-npm run dev
-```
-
-### Build
-```bash
-npm run build
-```
-
-### Deploy
-```bash
-npm run deploy
-```
-
-### Current Asset Status
-
-The game runs at 800x600 resolution with responsive scaling and features:
-- **Smart Asset Loading**: Attempts to load character and boss sprites from `/assets/sprites/` directory
-- **Automatic Fallback**: Creates colored placeholder textures when sprite files are missing
-- **Complete Functionality**: All game systems work regardless of asset availability
-- **Ready for Art**: Simply add PNG files to the assets directory to replace placeholders
-- **Placeholder Generation**: Boot and Preloader scenes automatically create colored shapes for all missing sprites
-- **Visual Consistency**: Each character class and boss has distinct colors for easy identification
-
-### Asset Structure Expected
-```
-src/client/public/assets/
-├── sprites/
-│   ├── warrior.png          # Red placeholder (32x32 recommended)
-│   ├── mage.png             # Blue placeholder (32x32 recommended)
-│   ├── rogue.png            # Green placeholder (32x32 recommended)
-│   ├── healer.png           # Yellow placeholder (32x32 recommended)
-│   ├── boss_lag_spike.png   # Dark red placeholder (128x128 recommended)
-│   ├── boss_algorithm.png   # Green placeholder (128x128 recommended)
-│   ├── boss_influencer.png  # Pink placeholder (128x128 recommended)
-│   ├── boss_deadline.png    # Yellow placeholder (128x128 recommended)
-│   ├── boss_spoiler.png     # Purple placeholder (128x128 recommended)
-│   ├── boss_referee.png     # Black placeholder (128x128 recommended)
-│   └── boss_cringe.png      # Orange placeholder (128x128 recommended)
-├── backgrounds/
-│   ├── castle_arena.png     # Battle background
-│   └── bg.png               # General background
-└── logo.png                 # Game logo
-```
-
-The game is fully playable with or without these assets thanks to intelligent placeholder generation in the Boot and Preloader scenes.
-
-## Current Technical Implementation
-
-### Fully Implemented Systems
-
-**🎮 Complete Scene Architecture**:
-- **7 Scenes**: Boot → Preloader → Splash → HowToPlay → ClassSelect → Battle → Victory
-- **Responsive Design**: 800x600 canvas with FIT scaling mode for all screen sizes
-- **Mobile Optimization**: Touch controls, haptic feedback, and performance adjustments
-- **Smart Asset Loading**: Attempts to load real sprites, creates colored placeholders for missing assets
-
-**⚔️ Advanced Combat System**:
-- **EnergySystem**: 5-point energy with individual 30-second cooldowns and 2-hour session refresh
-- **CombatSystem**: Damage calculations with class modifiers, critical hits, and boss phase resistance
-- **AttackSequence**: Cinematic 1.5-second attack animations with 6 distinct phases
-- **CommunityBuffSystem**: Healer's buff aura affecting next 5 community attacks by 20%
-- **DamageCalculator**: Centralized damage formulas with class-specific base damage and modifiers
-
-**🎨 Comprehensive Visual Effects**:
-- **ParticleSystem**: Mobile-optimized with object pooling (20 mobile/50 desktop particles)
-- **CameraEffectsSystem**: Dynamic screen shake, hit pause, motion trails, and weapon trails
-- **DamageNumberPool**: Color-coded floating damage numbers with pooling system
-- **StatusMessageQueue**: Combat feedback messages with animation queueing and unique effects
-- **ResponsiveLayoutSystem**: Dynamic layout management for portrait/landscape orientations
-
-**🖥️ Complete UI Framework**:
-- **BattleHUD**: Responsive battle interface with boss HP, energy indicators, session stats
-- **ActionButton**: Interactive buttons with hover effects, press animations, state management
-- **LiveActivityFeed**: Shows recent real player attacks with Reddit usernames and avatars
-- **LiveLeaderboard**: Swipe-up overlay showing Top 20 players with real-time updates
-- **StatusMessage**: Combat feedback with unique animations for different message types
-
-**🏗️ Robust Architecture**:
-- **TypeScript**: Strict type checking across all systems with shared types
-- **Modular Design**: Separate systems for energy, combat, animations, particles, UI, and mobile optimization
-- **Error Handling**: Graceful fallbacks for missing assets with automatic placeholder generation
-- **Performance Optimization**: Mobile-specific optimizations, dynamic quality adjustment, and performance monitoring
-
-### Fully Implemented Real-Time Features
-
-**🌐 Live Synchronization System**:
-- **SynchronizationSystem**: 10-second boss HP sync with sub-10-second accuracy across all players
-- **LiveActivityFeed**: Shows recent attacks from other Reddit users with usernames and damage dealt
-- **LiveLeaderboard**: Swipe-up overlay displaying Top 20 players with real-time ranking updates
-- **Community DPS Tracking**: Real-time statistics showing attacks per minute and active player count
-- **Reddit User Integration**: Displays actual Reddit usernames, avatars, and user data in-game
-
-**📱 Platform Features**:
-- Devvit integration for Reddit posts with automatic post creation
-- Responsive design for mobile and desktop with FIT scaling
-- Touch controls with 44x44px minimum button sizes meeting accessibility standards
-- Cross-platform compatibility across all modern browsers and Reddit's mobile app
+- **Client-Side Game Engine**: Phaser.js 3.70+ handles all game logic, animations, visual effects, and physics simulation
+- **Modular Systems**: Separate systems for energy management, combat calculations, combo tracking, session management (SessionSystem), visual effects, and UI components
+- **Scene-Based Architecture**: 5 distinct scenes (Boot, Splash, Battle, Results, Victory) with smooth transitions and comprehensive state management
+- **Mobile-First Design**: Responsive 800x600 canvas with FIT scaling, touch controls, and performance optimization for mobile devices
+- **Structured Session Gameplay**: Precisely timed 2-minute sessions with 10-attack limits, comprehensive session tracking, and immediate results
+- **Mobile-Optimized Experience**: FIT scaling mode provides optimal gameplay that maintains aspect ratio while adapting to any device size (320x240 to 1920x1080)

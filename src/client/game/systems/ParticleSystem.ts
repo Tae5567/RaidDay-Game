@@ -183,7 +183,7 @@ export class ParticleSystem {
       alpha: { start: 1, end: 0 },
       lifespan: 500,
       quantity: particleCount,
-      emitZone: { type: 'edge', source: new Phaser.Geom.Circle(0, 0, 30) },
+      emitZone: { type: 'edge', source: new Phaser.Geom.Circle(0, 0, 30), quantity: particleCount },
       tint: [0xffff00, 0xff6600, 0xff0000]
     });
 
@@ -212,7 +212,7 @@ export class ParticleSystem {
       alpha: { start: 1, end: 0 },
       lifespan: 1000,
       quantity: particleCount,
-      emitZone: { type: 'edge', source: new Phaser.Geom.Circle(0, 0, 50) },
+      emitZone: { type: 'edge', source: new Phaser.Geom.Circle(0, 0, 50), quantity: particleCount },
       tint: [0xff6600, 0xff0000, 0xffff00]
     });
 

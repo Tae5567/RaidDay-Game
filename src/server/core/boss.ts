@@ -35,84 +35,84 @@ export interface BossState {
   activePlayerCount: number;
 }
 
-// Daily boss rotation (7 themed bosses)
+// Daily boss rotation (7 themed bosses) - Simplified for 50,000 HP shared pool
 const DAILY_BOSSES: Record<number, BossData> = {
   0: { // Sunday
     id: 'the_cringe',
     name: 'The Cringe',
     theme: DailyTheme.MEMES,
-    baseHP: 80000,
-    level: 45,
+    baseHP: 50000, // Simplified shared HP pool
+    level: 1,
     spriteKey: 'boss_cringe',
-    phase2Threshold: 0.75,
-    enrageThreshold: 0.25,
-    damageResistance: { phase1: 1.0, phase2: 0.9 }
+    phase2Threshold: 0.5, // Simplified phases
+    enrageThreshold: 0.2,
+    damageResistance: { phase1: 1.0, phase2: 1.0 } // No damage resistance for simplicity
   },
   1: { // Monday
     id: 'the_lag_spike',
     name: 'The Lag Spike',
     theme: DailyTheme.GAMING,
-    baseHP: 80000,
-    level: 45,
+    baseHP: 50000,
+    level: 1,
     spriteKey: 'boss_lag_spike',
-    phase2Threshold: 0.75,
-    enrageThreshold: 0.25,
-    damageResistance: { phase1: 1.0, phase2: 0.9 }
+    phase2Threshold: 0.5,
+    enrageThreshold: 0.2,
+    damageResistance: { phase1: 1.0, phase2: 1.0 }
   },
   2: { // Tuesday
     id: 'the_algorithm',
     name: 'The Algorithm',
     theme: DailyTheme.INTERNET,
-    baseHP: 80000,
-    level: 45,
+    baseHP: 50000,
+    level: 1,
     spriteKey: 'boss_algorithm',
-    phase2Threshold: 0.75,
-    enrageThreshold: 0.25,
-    damageResistance: { phase1: 1.0, phase2: 0.9 }
+    phase2Threshold: 0.5,
+    enrageThreshold: 0.2,
+    damageResistance: { phase1: 1.0, phase2: 1.0 }
   },
   3: { // Wednesday
     id: 'the_influencer',
     name: 'The Influencer',
     theme: DailyTheme.SOCIAL_MEDIA,
-    baseHP: 80000,
-    level: 45,
+    baseHP: 50000,
+    level: 1,
     spriteKey: 'boss_influencer',
-    phase2Threshold: 0.75,
-    enrageThreshold: 0.25,
-    damageResistance: { phase1: 1.0, phase2: 0.9 }
+    phase2Threshold: 0.5,
+    enrageThreshold: 0.2,
+    damageResistance: { phase1: 1.0, phase2: 1.0 }
   },
   4: { // Thursday
     id: 'the_deadline',
     name: 'The Deadline',
     theme: DailyTheme.WORK,
-    baseHP: 80000,
-    level: 45,
+    baseHP: 50000,
+    level: 1,
     spriteKey: 'boss_deadline',
-    phase2Threshold: 0.75,
-    enrageThreshold: 0.25,
-    damageResistance: { phase1: 1.0, phase2: 0.9 }
+    phase2Threshold: 0.5,
+    enrageThreshold: 0.2,
+    damageResistance: { phase1: 1.0, phase2: 1.0 }
   },
   5: { // Friday
     id: 'the_spoiler',
     name: 'The Spoiler',
     theme: DailyTheme.ENTERTAINMENT,
-    baseHP: 80000,
-    level: 45,
+    baseHP: 50000,
+    level: 1,
     spriteKey: 'boss_spoiler',
-    phase2Threshold: 0.75,
-    enrageThreshold: 0.25,
-    damageResistance: { phase1: 1.0, phase2: 0.9 }
+    phase2Threshold: 0.5,
+    enrageThreshold: 0.2,
+    damageResistance: { phase1: 1.0, phase2: 1.0 }
   },
   6: { // Saturday
     id: 'the_referee',
     name: 'The Referee',
     theme: DailyTheme.SPORTS,
-    baseHP: 80000,
-    level: 45,
+    baseHP: 50000,
+    level: 1,
     spriteKey: 'boss_referee',
-    phase2Threshold: 0.75,
-    enrageThreshold: 0.25,
-    damageResistance: { phase1: 1.0, phase2: 0.9 }
+    phase2Threshold: 0.5,
+    enrageThreshold: 0.2,
+    damageResistance: { phase1: 1.0, phase2: 1.0 }
   }
 };
 
@@ -139,27 +139,58 @@ export class BossManager {
   }
 
   /**
-   * Initialize boss for a post with HP scaling based on active players
+   * Get next boss data by day name
+   */
+  public static async getNextBossData(dayName: string): Promise<BossData> {
+    const dayMap: Record<string, number> = {
+      'sunday': 0,
+      'monday': 1,
+      'tuesday': 2,
+      'wednesday': 3,
+      'thursday': 4,
+      'friday': 5,
+      'saturday': 6
+    };
+    
+    const dayIndex = dayMap[dayName.toLowerCase()];
+    if (dayIndex === undefined) {
+      return DAILY_BOSSES[1]!; // Fallback to Monday
+    }
+    const boss = DAILY_BOSSES[dayIndex];
+    
+    if (!boss) {
+      // Fallback to Monday's boss if something goes wrong
+      return DAILY_BOSSES[1]!;
+    }
+    
+    return boss;
+  }
+
+  /**
+   * Initialize boss for a post with shared 50,000 HP pool
    */
   public static async initializeBoss(postId: string): Promise<BossState> {
     const bossData = this.getCurrentBoss();
-    const activePlayerCount = await this.getActivePlayerCount(postId);
     
-    // Scale HP based on active players (minimum 1 player)
-    const playerScaling = Math.max(1, Math.floor(activePlayerCount / 10)) * 0.2 + 1;
-    const scaledHP = Math.floor(bossData.baseHP * playerScaling);
+    // Check if we need to reset for new day (8 AM daily reset)
+    const shouldReset = await this.shouldResetForNewDay(postId);
+    if (shouldReset) {
+      await this.performDailyReset(postId);
+    }
     
+    // Use fixed 50,000 HP as specified in requirements
     const bossState: BossState = {
-      currentHP: scaledHP,
-      maxHP: scaledHP,
+      currentHP: bossData.baseHP, // Always 50,000
+      maxHP: bossData.baseHP,
       phase: 1,
       isEnraged: false,
       lastDamageTime: Date.now(),
       totalDamageDealt: 0,
-      activePlayerCount: activePlayerCount
+      activePlayerCount: 1
     };
 
     await redis.set(this.getBossKey(postId), JSON.stringify(bossState));
+    await this.setLastResetTime(postId);
     return bossState;
   }
 
@@ -177,31 +208,27 @@ export class BossManager {
   }
 
   /**
-   * Update boss state after taking damage
+   * Update boss state after taking damage (simplified for shared HP pool)
    */
   public static async takeDamage(postId: string, damage: number): Promise<BossState> {
     const bossState = await this.getBossState(postId);
     const bossData = this.getCurrentBoss();
     
-    // Apply damage resistance based on phase
-    const resistance = bossState.phase === 1 ? 
-      bossData.damageResistance.phase1 : 
-      bossData.damageResistance.phase2;
-    
-    const actualDamage = Math.floor(damage * resistance);
+    // Apply damage directly (no resistance for simplicity)
+    const actualDamage = Math.floor(damage);
     bossState.currentHP = Math.max(0, bossState.currentHP - actualDamage);
     bossState.lastDamageTime = Date.now();
     bossState.totalDamageDealt += actualDamage;
 
-    // Check for phase transitions
+    // Check for phase transitions (simplified)
     const hpPercentage = bossState.currentHP / bossState.maxHP;
     
-    // Phase 2 transition
+    // Phase 2 transition at 50% HP
     if (bossState.phase === 1 && hpPercentage <= bossData.phase2Threshold) {
       bossState.phase = 2;
     }
     
-    // Enrage transition
+    // Enrage transition at 20% HP
     if (!bossState.isEnraged && hpPercentage <= bossData.enrageThreshold) {
       bossState.isEnraged = true;
     }
@@ -275,5 +302,77 @@ export class BossManager {
     const data = this.getCurrentBoss();
     const state = await this.getBossState(postId);
     return { data, state };
+  }
+
+  /**
+   * Check if boss should reset for new day (8 AM daily reset)
+   */
+  private static async shouldResetForNewDay(postId: string): Promise<boolean> {
+    const lastResetKey = `boss_last_reset:${postId}`;
+    const lastResetTime = await redis.get(lastResetKey);
+    
+    if (!lastResetTime) {
+      return true; // First time, needs reset
+    }
+    
+    const lastReset = new Date(parseInt(lastResetTime));
+    const now = new Date();
+    
+    // Check if we've passed 8 AM today and haven't reset yet
+    const today8AM = new Date(now);
+    today8AM.setHours(8, 0, 0, 0);
+    
+    // If current time is past 8 AM today and last reset was before 8 AM today
+    if (now >= today8AM && lastReset < today8AM) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  /**
+   * Perform daily boss reset at 8 AM
+   */
+  private static async performDailyReset(postId: string): Promise<void> {
+    // Clear boss state to force reinitialization
+    await redis.del(this.getBossKey(postId));
+    
+    // Clear leaderboard for new day
+    const leaderboardKey = `leaderboard:${postId}`;
+    await redis.del(leaderboardKey);
+    
+    // Clear community stats
+    const communityStatsKey = `community_stats:${postId}`;
+    await redis.del(communityStatsKey);
+    
+    // Clear recent attacks
+    const recentAttacksKey = `recent_attacks:${postId}`;
+    await redis.del(recentAttacksKey);
+    
+    console.log(`Daily reset performed for post ${postId} at ${new Date().toISOString()}`);
+  }
+
+  /**
+   * Set last reset time for daily tracking
+   */
+  private static async setLastResetTime(postId: string): Promise<void> {
+    const lastResetKey = `boss_last_reset:${postId}`;
+    await redis.set(lastResetKey, Date.now().toString());
+  }
+
+  /**
+   * Get next reset time (next 8 AM)
+   */
+  public static getNextResetTime(): Date {
+    const now = new Date();
+    const next8AM = new Date(now);
+    next8AM.setHours(8, 0, 0, 0);
+    
+    // If it's already past 8 AM today, set for tomorrow
+    if (now >= next8AM) {
+      next8AM.setDate(next8AM.getDate() + 1);
+    }
+    
+    return next8AM;
   }
 }

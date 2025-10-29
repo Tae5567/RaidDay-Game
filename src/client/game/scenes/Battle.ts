@@ -1,45 +1,51 @@
 import { Scene } from 'phaser';
 import { BossEntity, getCurrentBoss } from '../entities/BossEntity';
 import { PlayerCharacter, CharacterClass } from '../entities/PlayerCharacter';
-import { EnergySystem } from '../systems/EnergySystem';
-import { CombatSystem } from '../systems/CombatSystem';
+import { SessionSystem } from '../systems/SessionSystem';
+import { DamageCalculator } from '../utils/DamageCalculator';
+import { ActionButton, ButtonState } from '../ui/ActionButton';
+import { DamageNumberPool } from '../ui/DamageNumber';
 import { GameConstants } from '../utils/GameConstants';
 import { MobileUtils } from '../utils/MobileUtils';
+import { ResponsiveLayoutSystem } from '../systems/ResponsiveLayoutSystem';
+import { CameraEffectsSystem } from '../systems/CameraEffectsSystem';
+import { ParticleSystem } from '../systems/ParticleSystem';
+import { AnimationSystem } from '../systems/AnimationSystem';
+import { PerformanceMonitor } from '../systems/PerformanceMonitor';
+import { TransitionSystem } from '../systems/TransitionSystem';
 
 /**
  * Battle - Main battle scene where combat takes place
- * Simplified version with better text visibility and engaging gameplay
+ * Simplified 2-minute session with attack button and visual feedback
  */
 export class Battle extends Scene {
   // Core entities
   private boss?: BossEntity;
   private playerCharacter?: PlayerCharacter;
-  private communityPlayers: PlayerCharacter[] = [];
 
   // Systems
-  private energySystem?: EnergySystem;
-  private combatSystem?: CombatSystem;
+  private sessionSystem?: SessionSystem;
+  private damageNumberPool?: DamageNumberPool;
+  private responsiveLayout?: ResponsiveLayoutSystem;
+  private cameraEffects?: CameraEffectsSystem;
+  private particleSystem?: ParticleSystem;
+  private animationSystem?: AnimationSystem;
+  private performanceMonitor?: PerformanceMonitor;
+  private transitionSystem?: TransitionSystem;
 
   // Game state
-  private selectedClass?: CharacterClass;
-  private bossCurrentHP: number = 80000;
-  private bossMaxHP: number = 80000;
-  private bossPhase: number = 1;
+  private selectedClass: CharacterClass = CharacterClass.WARRIOR;
+  private bossCurrentHP: number = 50000; // Shared community HP
+  private bossMaxHP: number = 50000;
   private sessionDamage: number = 0;
-  private playerRank: number = 1;
-  private activeRaiders: number = 42;
-  
-  // Engagement mechanics
-  private comboCount: number = 0;
-  private lastAttackTime: number = 0;
-  private comboTimeWindow: number = 3000; // 3 seconds to maintain combo
+  private sessionAttackCount: number = 0;
   private isAttacking: boolean = false;
 
   // UI elements
   private bossHPBar?: Phaser.GameObjects.Graphics;
   private bossHPText?: Phaser.GameObjects.Text;
-  private statsText?: Phaser.GameObjects.Text;
-  private comboText?: Phaser.GameObjects.Text;
+  private sessionInfoText?: Phaser.GameObjects.Text;
+  private attackButton?: ActionButton;
 
   constructor() {
     super('Battle');
@@ -51,597 +57,436 @@ export class Battle extends Scene {
     console.log('Battle scene initialized with class:', this.selectedClass);
     
     // Reset state
-    this.communityPlayers = [];
-    this.bossCurrentHP = 80000;
-    this.bossMaxHP = 80000;
-    this.bossPhase = 1;
+    this.bossCurrentHP = 50000; // Shared community HP
+    this.bossMaxHP = 50000;
     this.sessionDamage = 0;
-    this.playerRank = 1;
-    this.activeRaiders = 42;
-    this.comboCount = 0;
-    this.lastAttackTime = 0;
+    this.sessionAttackCount = 0;
     this.isAttacking = false;
   }
 
-  create(): void {
+  async create(): Promise<void> {
     console.log('Battle scene starting...');
     
     this.setupSystems();
+    
+    // Smooth transition in
+    if (this.transitionSystem) {
+      await this.transitionSystem.transitionIn({
+        type: 'zoom',
+        duration: GameConstants.TRANSITION_DURATION_NORMAL
+      });
+    }
+    
     this.createBackground();
-    this.createEntities();
+    await this.createEntities();
     this.createUI();
+    
+    // Animate entrance of entities and UI
+    await this.animateSceneEntrance();
+    
     this.setupControls();
-    this.startGameLoop();
-    this.showGameplayTip();
+    this.startSession();
+    
+    // Handle screen resize
+    this.scale.on('resize', () => this.handleResize());
     
     console.log('Battle scene created successfully');
   }
 
+  private async animateSceneEntrance(): Promise<void> {
+    // Animate boss entrance first
+    if (this.boss && this.animationSystem) {
+      await this.animationSystem.animateBossEntrance(this.boss);
+    }
+    
+    // Then animate player entrance
+    if (this.playerCharacter && this.animationSystem) {
+      await this.animationSystem.animatePlayerEntrance(this.playerCharacter);
+    }
+    
+    // Finally animate UI elements
+    const uiElements: Phaser.GameObjects.GameObject[] = [];
+    if (this.bossHPText) uiElements.push(this.bossHPText);
+    if (this.sessionInfoText) uiElements.push(this.sessionInfoText);
+    if (this.attackButton) uiElements.push(this.attackButton);
+    
+    if (this.animationSystem && uiElements.length > 0) {
+      await this.animationSystem.animateUIEntrance(uiElements);
+    }
+  }
+
+  private handleResize(): void {
+    const { width, height } = this.scale;
+    
+    // Resize camera to fill entire screen
+    this.cameras.main.setViewport(0, 0, width, height);
+    
+    // Update UI positions
+    this.updateUI();
+  }
+
   private setupSystems(): void {
-    this.energySystem = new EnergySystem();
-    this.combatSystem = new CombatSystem();
+    this.sessionSystem = new SessionSystem(this);
+    this.damageNumberPool = new DamageNumberPool(this);
+    this.responsiveLayout = new ResponsiveLayoutSystem(this);
+    this.cameraEffects = new CameraEffectsSystem(this, MobileUtils.isMobile());
+    this.particleSystem = new ParticleSystem(this, MobileUtils.isMobile());
+    this.animationSystem = new AnimationSystem(this);
+    this.transitionSystem = new TransitionSystem(this);
+    
+    // Setup performance monitoring (Requirements 6.3, 6.4)
+    this.performanceMonitor = new PerformanceMonitor(this);
+    this.setupPerformanceOptimizations();
+    
+    // Setup mobile optimizations
+    MobileUtils.setupTouchControls(this);
+    MobileUtils.optimizeForMobile(this);
+    
+    // Listen for camera shake events
+    this.events.on('camera-shake', (intensity: number) => {
+      this.cameraEffects?.screenShake(intensity);
+    });
+  }
+
+  private setupPerformanceOptimizations(): void {
+    if (!this.performanceMonitor) return;
+
+    // Handle quality changes automatically
+    this.performanceMonitor.onQualityChange((settings) => {
+      // Update particle system limits
+      this.particleSystem?.setMaxParticles(settings.particleCount);
+      this.particleSystem?.setEffectsEnabled(settings.enableParticleEffects);
+      
+      // Update camera effects
+      this.cameraEffects?.setMobileMode(!settings.enableScreenShake);
+      
+      // Update animation system
+      this.animationSystem?.setMobileMode(settings.animationQuality === 'low');
+      
+      console.log('Performance settings updated:', settings);
+    });
+
+    // Handle performance warnings
+    this.performanceMonitor.onPerformanceWarning((metrics) => {
+      console.warn('Performance warning:', metrics);
+      
+      // Implement fallback systems for low-performance devices
+      if (metrics.fps < 20) {
+        this.enableFallbackMode();
+      }
+    });
+
+    // Listen for performance updates
+    this.events.on('performance-update', (metrics: any) => {
+      // Update particle count in metrics
+      if (this.particleSystem) {
+        metrics.particleCount = this.particleSystem.getActiveParticleCount();
+      }
+    });
+  }
+
+  /**
+   * Enable fallback systems for low-performance devices (Requirements 6.3, 6.4)
+   */
+  private enableFallbackMode(): void {
+    console.log('Enabling fallback mode for low-performance device');
+    
+    // Disable all visual effects
+    this.particleSystem?.setEffectsEnabled(false);
+    this.cameraEffects?.setMobileMode(true);
+    
+    // Reduce animation quality
+    this.animationSystem?.setMobileMode(true);
+    
+    // Simplify UI updates
+    this.time.removeAllEvents();
+    this.time.addEvent({
+      delay: 2000, // Update UI less frequently
+      callback: () => this.updateUI(),
+      loop: true
+    });
+    
+    // Show performance warning to user
+    this.showPerformanceWarning();
+  }
+
+  private showPerformanceWarning(): void {
+    const warningText = this.add.text(
+      this.scale.width / 2,
+      50,
+      'Performance mode enabled',
+      {
+        fontSize: '14px',
+        color: '#ffaa00',
+        backgroundColor: '#000000',
+        padding: { x: 10, y: 5 }
+      }
+    ).setOrigin(0.5).setDepth(1000);
+
+    // Fade out warning after 3 seconds
+    this.tweens.add({
+      targets: warningText,
+      alpha: 0,
+      duration: 3000,
+      delay: 2000,
+      onComplete: () => warningText.destroy()
+    });
   }
 
   private createBackground(): void {
     const { width, height } = this.scale;
     
-    // Create appealing gradient background
-    const graphics = this.add.graphics();
+    // Use castle_arena.png as battle background as specified in requirements
+    const background = this.add.image(width / 2, height / 2, 'castle_arena');
     
-    // Sky gradient (top to middle)
-    graphics.fillGradientStyle(0x2c3e50, 0x34495e, 0x2c3e50, 0x34495e);
-    graphics.fillRect(0, 0, width, height * 0.6);
-    
-    // Ground gradient (middle to bottom)
-    graphics.fillGradientStyle(0x27ae60, 0x2ecc71, 0x16a085, 0x1abc9c);
-    graphics.fillRect(0, height * 0.6, width, height * 0.4);
-    
-    // Add some atmospheric effects
-    for (let i = 0; i < 20; i++) {
-      const star = this.add.circle(
-        Phaser.Math.Between(0, width),
-        Phaser.Math.Between(0, height * 0.5),
-        1,
-        0xffffff,
-        0.8
-      );
-      
-      // Twinkling effect
-      this.tweens.add({
-        targets: star,
-        alpha: 0.2,
-        duration: Phaser.Math.Between(1000, 3000),
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut'
-      });
-    }
-
-    // Battle ground line with glow effect
-    const groundY = height - 120;
-    
-    // Glow effect
-    graphics.lineStyle(6, 0x3498db, 0.3);
-    graphics.lineBetween(0, groundY, width, groundY);
-    
-    // Main line
-    graphics.lineStyle(2, 0x3498db, 1);
-    graphics.lineBetween(0, groundY, width, groundY);
+    // Scale background to fit screen while maintaining aspect ratio
+    const scaleX = width / background.width;
+    const scaleY = height / background.height;
+    const scale = Math.max(scaleX, scaleY);
+    background.setScale(scale);
   }
 
-  private createEntities(): void {
+  private async createEntities(): Promise<void> {
     const { width, height } = this.scale;
 
-    // Create boss (center-top of battle area)
+    // Create boss at top with HP bar as specified
     const currentBossData = getCurrentBoss();
     this.boss = new BossEntity(
       this,
       width / 2,
-      height * 0.3,
+      height * 0.25, // Position at top
       currentBossData
     );
 
-    // Create player character (center-bottom of battle area)
+    // Create player character at bottom as specified
     this.playerCharacter = new PlayerCharacter(
       this,
       width / 2,
-      height - 150,
-      this.selectedClass || CharacterClass.WARRIOR
+      height * 0.75, // Position at bottom
+      this.selectedClass
     );
-    
-    // Highlight the player character
-    this.highlightPlayerCharacter();
 
-    // Create community players (spread across battle area)
-    this.createCommunityPlayers();
-  }
-
-  private createCommunityPlayers(): void {
-    const { width, height } = this.scale;
-    const classes = [CharacterClass.WARRIOR, CharacterClass.MAGE, CharacterClass.ROGUE, CharacterClass.HEALER];
-    
-    // Create 4 community players positioned around the real player
-    for (let i = 0; i < 4; i++) {
-      // Position them to the left and right of the player
-      const playerX = width / 2;
-      const offsetX = (i < 2) ? -120 - (i * 80) : 120 + ((i - 2) * 80);
-      const x = playerX + offsetX;
-      const y = height - 150;
+    // Add smooth entrance animations (Requirements 7.2, 7.5)
+    if (this.animationSystem && this.boss && this.playerCharacter) {
+      // Animate boss entrance first
+      await this.animationSystem.animateBossEntrance(this.boss);
       
-      const communityPlayer = new PlayerCharacter(
-        this,
-        x,
-        y,
-        classes[i % classes.length] || CharacterClass.WARRIOR
-      );
+      // Then animate player entrance
+      await this.animationSystem.animatePlayerEntrance(this.playerCharacter);
       
-      // Make community players slightly transparent and smaller
-      communityPlayer.setAlpha(0.7);
-      communityPlayer.setScale(1.2);
-      
-      this.communityPlayers.push(communityPlayer);
+      // Add floating idle animation for boss
+      this.animationSystem.animateFloating(this.boss, 3, 3000);
     }
   }
+
+
 
   private createUI(): void {
     const { width, height } = this.scale;
     
-    // Boss info in top center with better visibility
-    const currentBossData = getCurrentBoss();
-    this.add.text(width / 2, 25, `${currentBossData.name} • Level ${currentBossData.level}`, {
-      fontFamily: 'Arial Black',
-      fontSize: '18px',
-      color: '#ffffff',
-      stroke: '#000000',
-      strokeThickness: 3,
-    }).setOrigin(0.5);
-
-    // Boss HP bar with better visibility
+    // Boss HP bar at top as specified
+    const hpBarY = 50;
+    const hpBarWidth = Math.min(width - 40, 400);
+    
+    // HP bar background
     const hpBarBg = this.add.graphics();
     hpBarBg.fillStyle(0x333333);
-    hpBarBg.fillRect(width / 2 - 150, 45, 300, 16);
+    hpBarBg.fillRect(width / 2 - hpBarWidth / 2, hpBarY - 10, hpBarWidth, 20);
     hpBarBg.lineStyle(2, 0xffffff);
-    hpBarBg.strokeRect(width / 2 - 150, 45, 300, 16);
+    hpBarBg.strokeRect(width / 2 - hpBarWidth / 2, hpBarY - 10, hpBarWidth, 20);
     
     // HP bar (will be updated)
     this.bossHPBar = this.add.graphics();
     
     // HP text
-    this.bossHPText = this.add.text(width / 2, 70, `${this.bossCurrentHP.toLocaleString()} / ${this.bossMaxHP.toLocaleString()}`, {
+    this.bossHPText = this.add.text(width / 2, hpBarY + 20, `${this.bossCurrentHP.toLocaleString()} / ${this.bossMaxHP.toLocaleString()}`, {
       fontFamily: 'Arial',
-      fontSize: '12px',
+      fontSize: '14px',
       color: '#ffffff',
       stroke: '#000000',
       strokeThickness: 2,
     }).setOrigin(0.5);
 
-    // Player stats in bottom left corner
-    this.statsText = this.add.text(10, height - 90, '', {
+    // Session info display as specified
+    this.sessionInfoText = this.add.text(20, height - 100, '', {
       fontFamily: 'Arial',
-      fontSize: '10px',
-      color: '#ffffff',
-      stroke: '#000000',
-      strokeThickness: 2,
-    });
-
-    // Combo display in top left
-    this.comboText = this.add.text(10, 10, '', {
-      fontFamily: 'Arial Black',
       fontSize: '14px',
-      color: '#00ff00',
+      color: '#ffffff',
       stroke: '#000000',
       strokeThickness: 2,
     });
 
-    // Community stats in bottom right corner
-    this.add.text(width - 10, height - 60, 'Community:', {
-      fontFamily: 'Arial Black',
-      fontSize: '12px',
-      color: '#ffffff',
-      stroke: '#000000',
-      strokeThickness: 2,
-    }).setOrigin(1, 0);
-
-    this.add.text(width - 10, height - 45, `Raiders: ${this.activeRaiders}`, {
-      fontFamily: 'Arial',
-      fontSize: '10px',
-      color: '#00ff00',
-      stroke: '#000000',
-      strokeThickness: 2,
-    }).setOrigin(1, 0);
+    // Create attack button as specified
+    this.createAttackButton();
     
-    this.createButtons();
     this.updateUI();
   }
 
-  private createButtons(): void {
+  private createAttackButton(): void {
     const { width, height } = this.scale;
     
-    // Attack button with better interaction
-    const attackButton = this.add.rectangle(width / 2 - 80, height - 50, 120, 40, GameConstants.COLORS.BUTTON_ENABLED)
-      .setStrokeStyle(2, 0xffffff)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => {
-        attackButton.setFillStyle(0x3a7bc8);
-        this.performAttack();
-      })
-      .on('pointerup', () => {
-        attackButton.setFillStyle(GameConstants.COLORS.BUTTON_ENABLED);
-      })
-      .on('pointerout', () => {
-        attackButton.setFillStyle(GameConstants.COLORS.BUTTON_ENABLED);
-      });
-      
-    this.add.text(width / 2 - 80, height - 50, 'ATTACK', {
-      fontFamily: 'Arial Black',
-      fontSize: '14px',
-      color: '#ffffff',
-      stroke: '#000000',
-      strokeThickness: 2,
-    }).setOrigin(0.5);
-
-    // Special button with better interaction
-    const specialButton = this.add.rectangle(width / 2 + 80, height - 50, 120, 40, GameConstants.COLORS.BUTTON_ENABLED)
-      .setStrokeStyle(2, 0xffffff)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => {
-        specialButton.setFillStyle(0x3a7bc8);
-        this.performSpecialAttack();
-      })
-      .on('pointerup', () => {
-        specialButton.setFillStyle(GameConstants.COLORS.BUTTON_ENABLED);
-      })
-      .on('pointerout', () => {
-        specialButton.setFillStyle(GameConstants.COLORS.BUTTON_ENABLED);
-      });
-      
-    this.add.text(width / 2 + 80, height - 50, 'SPECIAL', {
-      fontFamily: 'Arial Black',
-      fontSize: '14px',
-      color: '#ffffff',
-      stroke: '#000000',
-      strokeThickness: 2,
-    }).setOrigin(0.5);
+    // Large, touch-friendly attack button (60x60 minimum for mobile)
+    const buttonWidth = MobileUtils.isMobile() ? 140 : 100;
+    const buttonHeight = MobileUtils.isMobile() ? 70 : 50;
+    
+    this.attackButton = new ActionButton(this, {
+      x: width / 2,
+      y: height - 80, // More space from bottom for mobile
+      width: buttonWidth,
+      height: buttonHeight,
+      text: 'ATTACK',
+      callback: () => this.performAttack()
+    });
+    
+    // Register with responsive layout system
+    if (this.responsiveLayout) {
+      this.responsiveLayout.registerElement('attackButton', this.attackButton, 
+        { x: '50%', y: height - 80 }, // Portrait
+        { x: '50%', y: height - 60 }  // Landscape
+      );
+    }
   }
 
   private setupControls(): void {
     // Keyboard controls for desktop
     if (!MobileUtils.isMobile()) {
       this.input.keyboard?.on('keydown-SPACE', () => this.performAttack());
-      this.input.keyboard?.on('keydown-SHIFT', () => this.performSpecialAttack());
+    }
+  }
+
+  private startSession(): void {
+    if (this.sessionSystem) {
+      this.sessionSystem.startSession();
+      
+      // Listen for session end event
+      this.sessionSystem.on('sessionEnded', () => {
+        this.transitionToResults();
+      });
+      
+      // Update UI every second
+      this.time.addEvent({
+        delay: 1000,
+        callback: () => this.updateUI(),
+        loop: true
+      });
     }
   }
 
   private performAttack(): void {
-    console.log('Attack performed!');
-    
-    if (this.isAttacking) {
-      console.log('Already attacking');
-      return;
-    }
-    
-    if (!this.energySystem || !this.playerCharacter || !this.combatSystem || !this.boss) {
-      console.log('Missing required systems for attack');
-      return;
-    }
-
-    // Check energy
-    if (!this.energySystem.canAttack()) {
-      console.log('Cannot attack - no energy');
-      return;
-    }
-
-    // Consume energy
-    if (!this.energySystem.consumeEnergy()) {
-      console.log('Failed to consume energy');
-      return;
-    }
-
-    this.isAttacking = true;
-
-    // Update combo system
-    const currentTime = Date.now();
-    if (currentTime - this.lastAttackTime <= this.comboTimeWindow) {
-      this.comboCount++;
-    } else {
-      this.comboCount = 1;
-    }
-    this.lastAttackTime = currentTime;
-
-    // Calculate damage with combo bonus
-    const hasFullEnergy = this.energySystem.hasFullEnergy();
-    let attackResult = this.combatSystem.calculateDamage(
-      this.playerCharacter.getCharacterClass(),
-      this.playerCharacter.getLevel(),
-      hasFullEnergy,
-      this.bossPhase
-    );
-
-    // Apply combo bonus (5% per combo hit, max 50%)
-    const comboBonus = Math.min(this.comboCount * 0.05, 0.5);
-    attackResult.damage = Math.floor(attackResult.damage * (1 + comboBonus));
-
-    // Simple attack animation - move player forward and back
-    const originalX = this.playerCharacter.x;
-    
-    // Move forward with combo speed bonus
-    const attackSpeed = Math.max(150, 250 - (this.comboCount * 10));
-    
-    this.tweens.add({
-      targets: this.playerCharacter,
-      x: originalX + 60,
-      duration: attackSpeed,
-      ease: 'Power2.Out',
-      onComplete: () => {
-        // Show damage with combo info
-        this.showDamageNumber(attackResult.damage, attackResult.isCritical, this.comboCount);
-        
-        // Boss hit effect
-        this.boss?.setTint(0xff0000);
-        this.time.delayedCall(100, () => {
-          this.boss?.clearTint();
-        });
-
-        // Screen shake for impact (stronger with combo)
-        const baseShake = attackResult.isCritical ? 5 : 2;
-        const comboShake = Math.min(this.comboCount * 0.5, 3);
-        this.cameras.main.shake(200, baseShake + comboShake);
-
-        // Move back
-        this.tweens.add({
-          targets: this.playerCharacter,
-          x: originalX,
-          duration: attackSpeed + 50,
-          ease: 'Power2.In',
-          onComplete: () => {
-            this.isAttacking = false;
-          }
-        });
-      }
-    });
-
-    // Apply damage to boss
-    this.bossCurrentHP = Math.max(0, this.bossCurrentHP - attackResult.damage);
-    this.sessionDamage += attackResult.damage;
-
-    // Check for boss phase transition
-    this.checkBossPhase();
-
-    // Check for victory
-    if (this.bossCurrentHP <= 0) {
-      this.time.delayedCall(500, () => {
-        this.transitionToVictory();
-      });
-    }
-
-    this.updateUI();
-  }
-
-  private performSpecialAttack(): void {
-    console.log('Special attack performed!');
-    
     if (this.isAttacking) {
       return;
     }
     
-    if (!this.energySystem || !this.playerCharacter || !this.combatSystem || !this.boss) {
+    if (!this.sessionSystem || !this.playerCharacter || !this.boss || !this.damageNumberPool) {
       return;
     }
 
-    // Check if special ability can be used (requires 3 energy)
-    if (this.energySystem.getEnergyState().current < 3) {
-      console.log('Not enough energy for special attack');
+    // Check if session allows attack and button is not on cooldown (spam prevention)
+    if (!this.sessionSystem.canAttack() || this.attackButton?.getState() !== ButtonState.ENABLED) {
+      this.attackButton?.playErrorAnimation();
       return;
-    }
-
-    // Consume 3 energy for special
-    for (let i = 0; i < 3; i++) {
-      if (!this.energySystem.consumeEnergy()) {
-        break;
-      }
     }
 
     this.isAttacking = true;
+    this.sessionAttackCount++;
 
-    // Calculate special damage (3x normal damage)
-    const baseDamage = this.combatSystem.calculateDamage(
-      this.playerCharacter.getCharacterClass(),
-      this.playerCharacter.getLevel(),
-      false,
-      this.bossPhase
+    // Show success animation on button
+    this.attackButton?.playSuccessAnimation();
+
+    // Calculate damage
+    const damage = DamageCalculator.calculateDamage(
+      this.selectedClass,
+      1 // Player level
     );
 
-    const specialDamage = baseDamage.damage * 3;
-
-    // Special attack animation
-    const originalX = this.playerCharacter.x;
-    
-    // Charge up effect
-    this.playerCharacter.setTint(0xffff00);
-    
-    this.tweens.add({
-      targets: this.playerCharacter,
-      scaleX: 1.8,
-      scaleY: 1.8,
-      duration: 300,
-      yoyo: true,
-      onComplete: () => {
-        if (this.playerCharacter) {
-          this.playerCharacter.clearTint();
-        }
-        
-        // Move forward for special attack
-        this.tweens.add({
-          targets: this.playerCharacter,
-          x: originalX + 80,
-          duration: 200,
-          ease: 'Power3.Out',
-          onComplete: () => {
-            // Show special damage
-            this.showDamageNumber(specialDamage, true, 0, true);
-            
-            // Boss hit effect
-            this.boss?.setTint(0xff0000);
-            this.time.delayedCall(200, () => {
-              this.boss?.clearTint();
-            });
-
-            // Big screen shake
-            this.cameras.main.shake(400, 8);
-
-            // Move back
-            this.tweens.add({
-              targets: this.playerCharacter,
-              x: originalX,
-              duration: 300,
-              ease: 'Power2.In',
-              onComplete: () => {
-                this.isAttacking = false;
-              }
-            });
-          }
-        });
-      }
-    });
+    // Play attack animation sequence (0.8 seconds total)
+    this.playAttackSequence(damage);
 
     // Apply damage to boss
-    this.bossCurrentHP = Math.max(0, this.bossCurrentHP - specialDamage);
-    this.sessionDamage += specialDamage;
-
-    // Check for boss phase transition
-    this.checkBossPhase();
+    this.bossCurrentHP = Math.max(0, this.bossCurrentHP - damage);
+    this.sessionDamage += damage;
 
     // Check for victory
     if (this.bossCurrentHP <= 0) {
       this.time.delayedCall(800, () => {
-        this.transitionToVictory();
+        this.scene.start('Victory', {
+          bossData: getCurrentBoss(),
+          sessionDamage: this.sessionDamage
+        });
       });
     }
 
     this.updateUI();
   }
 
-  private showDamageNumber(damage: number, isCritical: boolean, comboCount: number = 0, isSpecial: boolean = false): void {
-    if (!this.boss) return;
-
-    let color = '#ffff00';
-    let fontSize = '24px';
-    
-    if (isSpecial) {
-      color = '#ff00ff';
-      fontSize = '32px';
-    } else if (isCritical) {
-      color = '#ff6600';
-      fontSize = '28px';
+  private playAttackSequence(damage: number): void {
+    if (!this.playerCharacter || !this.boss || !this.damageNumberPool) {
+      return;
     }
 
-    const text = (isCritical || isSpecial) ? `${damage}!` : damage.toString();
-
-    const damageText = this.add.text(this.boss.x, this.boss.y - 50, text, {
-      fontFamily: 'Arial Black',
-      fontSize,
-      color,
-      stroke: '#000000',
-      strokeThickness: 3,
-    }).setOrigin(0.5);
-
-    // Animate damage number
+    // 0.8-second attack sequence as specified
+    // Phase 1: Run forward (0.3s)
     this.tweens.add({
-      targets: damageText,
-      y: damageText.y - 80,
-      alpha: 0,
-      duration: 1000,
-      ease: 'Power2',
-      onComplete: () => damageText.destroy()
+      targets: this.playerCharacter,
+      x: this.playerCharacter.x + 50,
+      duration: 300,
+      ease: 'Power2.Out',
+      onComplete: () => {
+        // Phase 2: Attack animation (0.2s) + damage popup
+        this.playerCharacter?.playAnimation('attack');
+        
+        // Show damage number with "YOUR damage: +234" styling
+        this.damageNumberPool?.showDamage({
+          x: this.boss!.x,
+          y: this.boss!.y - 50,
+          damage: damage,
+          isCritical: false,
+          isPlayerDamage: true // Distinguish player damage as specified
+        });
+        
+        // Enhanced visual effects (Requirements 7.1, 7.2)
+        // Screen shake proportional to damage dealt
+        this.cameraEffects?.screenShakeForDamage(damage);
+        
+        // Attack impact animation
+        this.animationSystem?.animateAttackImpact(this.boss!, damage);
+        
+        // Particle effects for attacks (limited to 10 particles on mobile)
+        this.particleSystem?.createSlashEffect(this.boss!.x, this.boss!.y);
+        
+        // Critical hit effects for high damage
+        if (damage > 300) {
+          this.particleSystem?.createCriticalBurst(this.boss!.x, this.boss!.y);
+          this.cameraEffects?.flashScreen(0xffff00, 150, 0.3); // Yellow flash for crit
+        }
+
+        this.time.delayedCall(200, () => {
+          // Phase 3: Run back (0.3s)
+          this.tweens.add({
+            targets: this.playerCharacter,
+            x: this.playerCharacter!.x - 50,
+            duration: 300,
+            ease: 'Power2.In',
+            onComplete: () => {
+              this.isAttacking = false;
+              
+              // Set attack cooldown to prevent spam clicking
+              this.attackButton?.startCooldown(800); // 0.8 second cooldown
+            }
+          });
+        });
+      }
     });
-
-    // Show status text
-    if (isSpecial) {
-      const statusText = this.add.text(this.boss.x, this.boss.y - 80, 'SPECIAL!', {
-        fontFamily: 'Arial Black',
-        fontSize: '18px',
-        color: '#ff00ff',
-        stroke: '#000000',
-        strokeThickness: 2,
-      }).setOrigin(0.5);
-
-      this.tweens.add({
-        targets: statusText,
-        y: statusText.y - 60,
-        alpha: 0,
-        duration: 1000,
-        ease: 'Power2',
-        onComplete: () => statusText.destroy()
-      });
-    } else if (isCritical) {
-      const statusText = this.add.text(this.boss.x, this.boss.y - 80, 'CRITICAL!', {
-        fontFamily: 'Arial Black',
-        fontSize: '16px',
-        color: '#ff6600',
-        stroke: '#000000',
-        strokeThickness: 2,
-      }).setOrigin(0.5);
-
-      this.tweens.add({
-        targets: statusText,
-        y: statusText.y - 60,
-        alpha: 0,
-        duration: 800,
-        ease: 'Power2',
-        onComplete: () => statusText.destroy()
-      });
-    }
-
-    // Show combo text
-    if (comboCount > 1) {
-      const comboText = this.add.text(this.boss.x + 40, this.boss.y - 30, `${comboCount}x COMBO!`, {
-        fontFamily: 'Arial Black',
-        fontSize: '14px',
-        color: '#00ff00',
-        stroke: '#000000',
-        strokeThickness: 2,
-      }).setOrigin(0.5);
-
-      this.tweens.add({
-        targets: comboText,
-        y: comboText.y - 40,
-        alpha: 0,
-        duration: 600,
-        ease: 'Power2',
-        onComplete: () => comboText.destroy()
-      });
-    }
   }
 
-  private checkBossPhase(): void {
-    const hpPercentage = this.bossCurrentHP / this.bossMaxHP;
-    
-    if (hpPercentage <= GameConstants.BOSS_PHASE2_THRESHOLD && this.bossPhase === 1) {
-      this.bossPhase = 2;
-      if (this.boss) {
-        this.boss.enterPhase2();
-      }
-      
-      // Visual indication of phase change
-      this.cameras.main.shake(GameConstants.SCREEN_SHAKE_DURATION, GameConstants.SHAKE_BOSS_PHASE);
-      
-      // Show phase change message
-      const phaseText = this.add.text(this.scale.width / 2, this.scale.height / 2, 'PHASE 2!', {
-        fontFamily: 'Arial Black',
-        fontSize: '32px',
-        color: '#ff0000',
-        stroke: '#000000',
-        strokeThickness: 3,
-      }).setOrigin(0.5);
 
-      this.tweens.add({
-        targets: phaseText,
-        alpha: 0,
-        duration: 2000,
-        ease: 'Power2',
-        onComplete: () => phaseText.destroy()
-      });
-    }
+
+  override update(): void {
+    // Update visual effects systems
+    this.cameraEffects?.update();
+    
+    // Performance monitoring is handled automatically via events
+    // No manual update needed for PerformanceMonitor
   }
 
   private updateUI(): void {
@@ -649,11 +494,12 @@ export class Battle extends Scene {
     if (this.bossHPBar) {
       const { width } = this.scale;
       const hpPercentage = this.bossCurrentHP / this.bossMaxHP;
-      const barWidth = 300 * hpPercentage;
+      const hpBarWidth = Math.min(width - 40, 400);
+      const barWidth = hpBarWidth * hpPercentage;
       
       this.bossHPBar.clear();
       this.bossHPBar.fillStyle(GameConstants.COLORS.HP_BAR);
-      this.bossHPBar.fillRect(width / 2 - 150, 45, barWidth, 16);
+      this.bossHPBar.fillRect(width / 2 - hpBarWidth / 2, 40, barWidth, 20);
     }
     
     // Update HP text
@@ -661,161 +507,52 @@ export class Battle extends Scene {
       this.bossHPText.setText(`${this.bossCurrentHP.toLocaleString()} / ${this.bossMaxHP.toLocaleString()}`);
     }
 
-    // Update stats
-    if (this.statsText) {
-      this.statsText.setText(
-        `Your Stats:\nDamage: ${this.sessionDamage.toLocaleString()}\nRank: #${this.playerRank}`
+    // Update session info display as specified
+    if (this.sessionInfoText && this.sessionSystem) {
+      const sessionState = this.sessionSystem.getSessionState();
+      const timeRemaining = sessionState.timeRemaining;
+      const minutes = Math.floor(timeRemaining / 60);
+      const seconds = timeRemaining % 60;
+      const timeDisplay = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      
+      const attacksLeft = Math.max(0, 10 - this.sessionAttackCount); // Max 10 attacks per session
+      
+      this.sessionInfoText.setText(
+        `Time: ${timeDisplay}\n` +
+        `Attacks left: ${attacksLeft}\n` +
+        `Current damage: ${this.sessionDamage.toLocaleString()}`
       );
     }
-
-    // Update combo display
-    if (this.comboText) {
-      if (this.comboCount > 1) {
-        this.comboText.setText(`${this.comboCount}x COMBO!`);
-        this.comboText.setVisible(true);
-      } else {
-        this.comboText.setVisible(false);
-      }
-    }
   }
 
-  private startGameLoop(): void {
-    // Update energy system every 100ms
-    this.time.addEvent({
-      delay: 100,
-      callback: () => {
-        if (this.energySystem) {
-          this.energySystem.updateCooldowns(100);
-        }
-        
-        // Check combo timeout
-        this.checkComboTimeout();
-      },
-      loop: true
-    });
-
-    // Simulate community attacks
-    this.time.addEvent({
-      delay: Phaser.Math.Between(2000, 4000),
-      callback: () => this.simulateCommunityAttack(),
-      loop: true
-    });
-  }
-
-  private checkComboTimeout(): void {
-    const currentTime = Date.now();
-    if (this.comboCount > 0 && currentTime - this.lastAttackTime > this.comboTimeWindow) {
-      if (this.comboCount > 1) {
-        // Show combo lost message
-        const comboLostText = this.add.text(this.scale.width / 2, this.scale.height / 2 + 50, 'COMBO LOST!', {
-          fontFamily: 'Arial Black',
-          fontSize: '16px',
-          color: '#ff0000',
-          stroke: '#000000',
-          strokeThickness: 2,
-        }).setOrigin(0.5);
-
-        this.tweens.add({
-          targets: comboLostText,
-          alpha: 0,
-          duration: 1000,
-          ease: 'Power2',
-          onComplete: () => comboLostText.destroy()
-        });
-      }
-      this.comboCount = 0;
-      this.updateUI();
-    }
-  }
-
-  private simulateCommunityAttack(): void {
-    if (this.communityPlayers.length === 0 || !this.boss) return;
-
-    // Pick a random community player
-    const attacker = Phaser.Utils.Array.GetRandom(this.communityPlayers);
-    if (!attacker) return;
-
-    // Simple attack animation
-    const originalX = attacker.x;
-    
-    this.tweens.add({
-      targets: attacker,
-      x: originalX + 20,
-      duration: 300,
-      yoyo: true,
-      ease: 'Power2',
-      onComplete: () => {
-        // Show community damage
-        const damage = Phaser.Math.Between(150, 400);
-        this.showDamageNumber(damage, false, 0, false);
-      }
-    });
-  }
-
-  private showGameplayTip(): void {
-    const { width, height } = this.scale;
-    
-    const tipText = this.add.text(width / 2, height / 2 - 100, 
-      'Click ATTACK rapidly to build combos!\nHigher combos = More damage!\nSpecial costs 3 energy but deals 3x damage!', {
-      fontFamily: 'Arial',
-      fontSize: '14px',
-      color: '#ffffff',
-      stroke: '#000000',
-      strokeThickness: 2,
-      align: 'center'
-    }).setOrigin(0.5).setAlpha(0);
-
-    // Fade in tip
-    this.tweens.add({
-      targets: tipText,
-      alpha: 1,
-      duration: 500,
-      onComplete: () => {
-        // Fade out after 4 seconds
-        this.time.delayedCall(4000, () => {
-          this.tweens.add({
-            targets: tipText,
-            alpha: 0,
-            duration: 1000,
-            onComplete: () => tipText.destroy()
-          });
+  private transitionToResults(): void {
+    // Get player rank from server before transitioning
+    this.getPlayerRank().then(playerRank => {
+      // Smooth transition to results scene with session data
+      if (this.transitionSystem) {
+        this.transitionSystem.slideTransition('Results', 'up', {
+          sessionDamage: this.sessionDamage,
+          sessionAttackCount: this.sessionAttackCount,
+          bossName: getCurrentBoss().name,
+          bossHPRemaining: this.bossCurrentHP,
+          playerRank: playerRank
         });
       }
     });
   }
 
-  private highlightPlayerCharacter(): void {
-    if (!this.playerCharacter) return;
-
-    // Add a glow effect around the player
-    const glow = this.add.circle(this.playerCharacter.x, this.playerCharacter.y, 40, 0xffff00, 0.2);
-    this.tweens.add({
-      targets: glow,
-      alpha: 0.1,
-      duration: 1000,
-      yoyo: true,
-      repeat: -1
-    });
-
-    // Add "YOU" label above the player
-    this.add.text(this.playerCharacter.x, this.playerCharacter.y - 50, 'YOU', {
-      fontFamily: 'Arial Black',
-      fontSize: '12px',
-      color: '#ffff00',
-      stroke: '#000000',
-      strokeThickness: 2,
-    }).setOrigin(0.5);
-  }
-
-  private transitionToVictory(): void {
-    // Get current boss data
-    const bossData = getCurrentBoss();
-
-    // Start victory scene with data
-    this.scene.start('Victory', {
-      bossData: bossData,
-      sessionDamage: this.sessionDamage,
-      playerRank: this.playerRank
-    });
+  private async getPlayerRank(): Promise<number> {
+    try {
+      const response = await fetch('/api/leaderboard');
+      if (response.ok) {
+        await response.json();
+        // Find current player's rank (this would need user ID in real implementation)
+        // For now, return a simulated rank
+        return Math.floor(Math.random() * 50) + 1;
+      }
+    } catch (error) {
+      console.error('Failed to get player rank:', error);
+    }
+    return 0; // Default rank if failed
   }
 }

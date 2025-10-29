@@ -3,44 +3,47 @@ import { RecentAttacker } from '../../../shared/types/api';
 import { GameConstants } from '../utils/GameConstants';
 
 /**
- * LiveActivityFeed - Shows recent real player attacks with avatars and usernames
+ * LiveActivityFeed - Shows scrolling ticker of recent attacks: "u/Player1 dealt 234 damage (5s ago)"
+ * Updates every 5 seconds with last 10 attacks and displays real Reddit usernames
  */
 export class LiveActivityFeed {
   private scene: Scene;
   private container: Phaser.GameObjects.Container;
+  private tickerContainer: Phaser.GameObjects.Container;
   private recentAttackers: RecentAttacker[] = [];
-  private attackerElements: Map<string, Phaser.GameObjects.Container> = new Map();
+  private tickerTexts: Phaser.GameObjects.Text[] = [];
   private updateTimer?: Phaser.Time.TimerEvent;
+  private scrollTween?: Phaser.Tweens.Tween;
 
   constructor(scene: Scene, x: number, y: number) {
     this.scene = scene;
     this.container = scene.add.container(x, y);
+    this.tickerContainer = scene.add.container(0, 0);
+    this.container.add(this.tickerContainer);
     this.createBackground();
     this.startUpdateTimer();
   }
 
   private createBackground(): void {
-    // Activity feed background
+    // Scrolling ticker background - horizontal bar at bottom of screen
     const bg = this.scene.add.graphics();
-    bg.fillStyle(0x000000, 0.7);
-    bg.fillRoundedRect(-120, -80, 240, 160, 8);
-    bg.lineStyle(2, GameConstants.COLORS.UI_SECONDARY, 0.8);
-    bg.strokeRoundedRect(-120, -80, 240, 160, 8);
+    bg.fillStyle(0x000000, 0.8);
+    bg.fillRect(-400, -15, 800, 30); // Wide horizontal bar
+    bg.lineStyle(1, GameConstants.COLORS.UI_SECONDARY, 0.6);
+    bg.strokeRect(-400, -15, 800, 30);
     this.container.add(bg);
 
-    // Title
-    const title = this.scene.add.text(0, -65, 'Recent Raiders', {
-      fontFamily: 'Arial Black',
-      fontSize: '14px',
-      color: '#ffffff',
-      stroke: '#000000',
-      strokeThickness: 2,
+    // Activity indicator icon
+    const activityIcon = this.scene.add.text(-380, 0, '⚡', {
+      fontFamily: 'Arial',
+      fontSize: '16px',
+      color: '#ffff00',
     }).setOrigin(0.5);
-    this.container.add(title);
+    this.container.add(activityIcon);
   }
 
   private startUpdateTimer(): void {
-    // Update recent attackers every 5 seconds
+    // Update recent attackers every 5 seconds as specified in requirements
     this.updateTimer = this.scene.time.addEvent({
       delay: 5000,
       callback: () => this.fetchRecentAttackers(),
@@ -114,114 +117,78 @@ export class LiveActivityFeed {
   }
 
   private updateRecentAttackers(attackers: RecentAttacker[]): void {
-    // Filter to last 60 seconds
+    // Filter to last 60 seconds and get last 10 attacks as specified
     const sixtySecondsAgo = Date.now() - 60000;
     this.recentAttackers = attackers
       .filter(attacker => attacker.timestamp > sixtySecondsAgo)
-      .slice(0, 4); // Show max 4 recent attackers
+      .slice(0, 10); // Show last 10 attacks as per requirements
 
-    this.refreshDisplay();
+    this.refreshScrollingTicker();
   }
 
-  private refreshDisplay(): void {
-    // Clear existing attacker elements
-    this.attackerElements.forEach(element => element.destroy());
-    this.attackerElements.clear();
+  private refreshScrollingTicker(): void {
+    // Clear existing ticker texts
+    this.tickerTexts.forEach(text => text.destroy());
+    this.tickerTexts = [];
+
+    // Stop existing scroll animation
+    if (this.scrollTween) {
+      this.scrollTween.destroy();
+    }
 
     // Show message if no recent attackers
     if (this.recentAttackers.length === 0) {
-      const noActivityText = this.scene.add.text(0, 0, 'No recent activity\nBe the first to attack!', {
+      const noActivityText = this.scene.add.text(-350, 0, 'No recent activity - Be the first to attack!', {
         fontFamily: 'Arial',
         fontSize: '12px',
         color: '#cccccc',
-        align: 'center',
-      }).setOrigin(0.5);
-      this.container.add(noActivityText);
-      this.attackerElements.set('no-activity', this.scene.add.container().add(noActivityText));
+      }).setOrigin(0, 0.5);
+      this.tickerContainer.add(noActivityText);
+      this.tickerTexts.push(noActivityText);
       return;
     }
 
-    // Display each recent attacker
-    this.recentAttackers.forEach((attacker, index) => {
-      const y = -35 + (index * 30);
-      const attackerContainer = this.createAttackerElement(attacker, y);
-      this.container.add(attackerContainer);
-      this.attackerElements.set(attacker.userId, attackerContainer);
+    // Create scrolling ticker messages in format: "u/Player1 dealt 234 damage (5s ago)"
+    const tickerMessages: string[] = [];
+    this.recentAttackers.forEach(attacker => {
+      const timeAgo = this.getTimeAgo(attacker.timestamp);
+      const message = `${attacker.redditUsername} dealt ${attacker.damage.toLocaleString()} damage (${timeAgo})`;
+      tickerMessages.push(message);
+    });
+
+    // Join messages with separators
+    const fullTickerText = tickerMessages.join('  •  ');
+    
+    // Create scrolling text
+    const tickerText = this.scene.add.text(350, 0, fullTickerText, {
+      fontFamily: 'Arial',
+      fontSize: '12px',
+      color: '#ffffff',
+    }).setOrigin(0, 0.5);
+    
+    this.tickerContainer.add(tickerText);
+    this.tickerTexts.push(tickerText);
+
+    // Start scrolling animation - move from right to left
+    const textWidth = tickerText.width;
+    const scrollDistance = textWidth + 700; // Text width + screen width
+    
+    this.scrollTween = this.scene.tweens.add({
+      targets: tickerText,
+      x: -scrollDistance,
+      duration: scrollDistance * 20, // Adjust speed (lower = faster)
+      ease: 'Linear',
+      repeat: -1, // Infinite loop
+      onRepeat: () => {
+        // Reset position when animation repeats
+        tickerText.x = 350;
+      }
     });
   }
 
-  private createAttackerElement(attacker: RecentAttacker, y: number): Phaser.GameObjects.Container {
-    const container = this.scene.add.container(0, y);
 
-    // Avatar (placeholder circle for now, will be replaced with real Reddit avatars)
-    const avatar = this.scene.add.circle(-90, 0, 12, this.getClassColor(attacker.characterClass));
-    avatar.setStrokeStyle(2, 0xffffff);
-    container.add(avatar);
 
-    // If we have an avatar URL, load it (simplified for now)
-    if (attacker.avatarUrl) {
-      // In a real implementation, you'd load the image from the URL
-      // For now, we'll use a colored circle with initials
-      const initials = attacker.redditUsername.substring(2, 4).toUpperCase(); // Remove 'u/' prefix
-      const initialsText = this.scene.add.text(-90, 0, initials, {
-        fontFamily: 'Arial Black',
-        fontSize: '8px',
-        color: '#ffffff',
-      }).setOrigin(0.5);
-      container.add(initialsText);
-    }
 
-    // Username (highlight if it's the current user)
-    const isCurrentUser = attacker.username === 'You';
-    const usernameColor = isCurrentUser ? '#ffff00' : '#ffffff';
-    const username = this.scene.add.text(-70, -8, attacker.redditUsername, {
-      fontFamily: 'Arial',
-      fontSize: '10px',
-      color: usernameColor,
-    }).setOrigin(0, 0.5);
-    container.add(username);
-
-    // Class and level
-    const classText = this.scene.add.text(-70, 4, `Lv.${attacker.level} ${this.capitalizeFirst(attacker.characterClass)}`, {
-      fontFamily: 'Arial',
-      fontSize: '8px',
-      color: '#cccccc',
-    }).setOrigin(0, 0.5);
-    container.add(classText);
-
-    // Damage dealt
-    const damageText = this.scene.add.text(90, 0, `${attacker.damage.toLocaleString()}`, {
-      fontFamily: 'Arial Black',
-      fontSize: '10px',
-      color: '#00ff00',
-    }).setOrigin(1, 0.5);
-    container.add(damageText);
-
-    // Time ago
-    const timeAgo = this.getTimeAgo(attacker.timestamp);
-    const timeText = this.scene.add.text(90, -10, timeAgo, {
-      fontFamily: 'Arial',
-      fontSize: '8px',
-      color: '#999999',
-    }).setOrigin(1, 0.5);
-    container.add(timeText);
-
-    return container;
-  }
-
-  private getClassColor(characterClass: string): number {
-    switch (characterClass) {
-      case 'warrior': return 0xff4444;
-      case 'mage': return 0x4444ff;
-      case 'rogue': return 0x44ff44;
-      case 'healer': return 0xffff44;
-      default: return 0xffffff;
-    }
-  }
-
-  private capitalizeFirst(str: string): string {
-    return str.charAt(0).toUpperCase() + str.slice(1);
-  }
 
   private getTimeAgo(timestamp: number): string {
     const secondsAgo = Math.floor((Date.now() - timestamp) / 1000);
@@ -237,24 +204,22 @@ export class LiveActivityFeed {
     // Add new attacker to the beginning of the list
     this.recentAttackers.unshift(attacker);
     
-    // Keep only the 4 most recent
-    this.recentAttackers = this.recentAttackers.slice(0, 4);
+    // Keep only the 10 most recent as per requirements
+    this.recentAttackers = this.recentAttackers.slice(0, 10);
     
-    // Refresh display
-    this.refreshDisplay();
+    // Refresh ticker display
+    this.refreshScrollingTicker();
 
-    // Animate the new entry
-    const newElement = this.attackerElements.get(attacker.userId);
-    if (newElement) {
-      newElement.setAlpha(0);
-      newElement.setScale(0.8);
+    // Flash the activity icon to indicate new activity
+    const activityIcon = this.container.getAt(1) as Phaser.GameObjects.Text; // The ⚡ icon
+    if (activityIcon) {
       this.scene.tweens.add({
-        targets: newElement,
-        alpha: 1,
-        scaleX: 1,
-        scaleY: 1,
-        duration: 300,
-        ease: 'Back.easeOut'
+        targets: activityIcon,
+        scaleX: 1.5,
+        scaleY: 1.5,
+        duration: 200,
+        yoyo: true,
+        ease: 'Power2'
       });
     }
   }
@@ -271,8 +236,11 @@ export class LiveActivityFeed {
     if (this.updateTimer) {
       this.updateTimer.destroy();
     }
-    this.attackerElements.forEach(element => element.destroy());
-    this.attackerElements.clear();
+    if (this.scrollTween) {
+      this.scrollTween.destroy();
+    }
+    this.tickerTexts.forEach(text => text.destroy());
+    this.tickerTexts = [];
     this.container.destroy();
   }
 }

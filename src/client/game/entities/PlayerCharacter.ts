@@ -39,83 +39,83 @@ export interface CharacterClassData {
 }
 
 /**
- * Character class configurations
+ * Character class configurations (simplified with similar damage output)
  */
 export const CHARACTER_CLASSES: Record<CharacterClass, CharacterClassData> = {
   [CharacterClass.WARRIOR]: {
     name: 'Warrior',
-    baseDamage: 120,
+    baseDamage: 200, // Similar damage range 180-220
     critChance: GameConstants.DEFAULT_CRIT_CHANCE,
     spriteKey: 'warrior',
     animations: {
-      idle: { frames: 2, frameRate: 2 },
-      run: { frames: 4, frameRate: 8 },
-      attack: { frames: 3, frameRate: 10 },
-      special: { frames: 4, frameRate: 8 }
+      idle: { frames: 1, frameRate: 1 },
+      run: { frames: 1, frameRate: 1 },
+      attack: { frames: 1, frameRate: 1 },
+      special: { frames: 1, frameRate: 1 }
     },
     specialAbility: {
-      name: 'Charge Attack',
-      description: '3-hit combo with enhanced animations',
-      effect: 'triple_hit',
-      energyCost: 3,
-      damageMultiplier: 3
+      name: 'Power Strike',
+      description: 'Strong melee attack',
+      effect: 'power_strike',
+      energyCost: 1,
+      damageMultiplier: 1.1
     }
   },
   [CharacterClass.MAGE]: {
     name: 'Mage',
-    baseDamage: 100,
+    baseDamage: 200, // Similar damage range 170-230
     critChance: GameConstants.DEFAULT_CRIT_CHANCE,
     spriteKey: 'mage',
     animations: {
-      idle: { frames: 2, frameRate: 2 },
-      run: { frames: 4, frameRate: 8 },
-      attack: { frames: 3, frameRate: 10 },
-      special: { frames: 4, frameRate: 6 }
+      idle: { frames: 1, frameRate: 1 },
+      run: { frames: 1, frameRate: 1 },
+      attack: { frames: 1, frameRate: 1 },
+      special: { frames: 1, frameRate: 1 }
     },
     specialAbility: {
-      name: 'Fireball',
-      description: 'Explosive magic with screen shake',
-      effect: 'fireball_explosion',
-      energyCost: 3,
-      damageMultiplier: 3
+      name: 'Magic Bolt',
+      description: 'Magical ranged attack',
+      effect: 'magic_bolt',
+      energyCost: 1,
+      damageMultiplier: 1.15
     }
   },
   [CharacterClass.ROGUE]: {
     name: 'Rogue',
-    baseDamage: 90,
-    critChance: GameConstants.ROGUE_CRIT_CHANCE, // 30% crit chance
+    baseDamage: 200, // Similar damage range 160-240
+    critChance: GameConstants.DEFAULT_CRIT_CHANCE,
     spriteKey: 'rogue',
     animations: {
-      idle: { frames: 2, frameRate: 2 },
-      run: { frames: 4, frameRate: 10 },
-      attack: { frames: 3, frameRate: 12 },
-      special: { frames: 3, frameRate: 15 }
+      idle: { frames: 1, frameRate: 1 },
+      run: { frames: 1, frameRate: 1 },
+      attack: { frames: 1, frameRate: 1 },
+      special: { frames: 1, frameRate: 1 }
     },
     specialAbility: {
-      name: 'Backstab',
-      description: 'Teleport attack with guaranteed critical',
-      effect: 'backstab_teleport',
-      energyCost: 3,
-      damageMultiplier: 3
+      name: 'Quick Strike',
+      description: 'Fast precise attack',
+      effect: 'quick_strike',
+      energyCost: 1,
+      damageMultiplier: 1.2
     }
   },
   [CharacterClass.HEALER]: {
     name: 'Healer',
-    baseDamage: 80,
+    baseDamage: 200, // Similar damage range 175-225
     critChance: GameConstants.DEFAULT_CRIT_CHANCE,
     spriteKey: 'healer',
     animations: {
-      idle: { frames: 2, frameRate: 2 },
-      run: { frames: 4, frameRate: 6 },
-      attack: { frames: 3, frameRate: 8 },
-      special: { frames: 4, frameRate: 5 }
+      idle: { frames: 1, frameRate: 1 },
+      run: { frames: 1, frameRate: 1 },
+      attack: { frames: 1, frameRate: 1 },
+      special: { frames: 1, frameRate: 1 }
     },
     specialAbility: {
-      name: 'Buff Aura',
-      description: 'Enhances next 5 community attacks (+20% damage)',
-      effect: 'community_buff',
-      energyCost: 3,
-      damageMultiplier: 3
+      name: 'Holy Strike',
+      description: 'Divine damage attack',
+      effect: 'holy_strike',
+      energyCost: 1,
+      damageMultiplier: 1.05
     }
   }
 };
@@ -139,6 +139,7 @@ export class PlayerCharacter extends Phaser.GameObjects.Sprite {
     characterClass: CharacterClass,
     level: number = 1
   ) {
+    // Use the class sprite key (fallback will be created in Preloader)
     super(scene, x, y, CHARACTER_CLASSES[characterClass].spriteKey);
     
     this.characterClass = characterClass;
@@ -150,107 +151,117 @@ export class PlayerCharacter extends Phaser.GameObjects.Sprite {
     // Add to scene
     scene.add.existing(this);
     
-    // Set initial scale for character sprites (make them smaller for better layout)
-    this.setScale(1.5); // Reduced from 2 to 1.5
+    // Set initial scale for 32x32 character sprites
+    this.setScale(2);
     this.setOrigin(0.5);
     
-    // Since we're using single image sprites, no animations needed for now
-    // this.createAnimations();
+    // Create animations
+    this.createAnimations();
+    
+    // Start idle animation
+    this.playIdleAnimation();
     
     // Set initial state
     this.setVisible(true);
   }
 
+
+
   /**
-   * Create all animations for this character class
+   * Create basic animations for this character class (simplified for single-frame sprites)
    */
   private createAnimations(): void {
     const scene = this.scene;
     const spriteKey = this.classData.spriteKey;
     
-    // Create idle animation
+    // Create idle animation (single frame with subtle movement)
     if (!scene.anims.exists(`${spriteKey}_idle`)) {
       scene.anims.create({
         key: `${spriteKey}_idle`,
-        frames: scene.anims.generateFrameNumbers(spriteKey, { 
-          start: 0, 
-          end: this.classData.animations.idle.frames - 1 
-        }),
-        frameRate: this.classData.animations.idle.frameRate,
+        frames: [{ key: spriteKey, frame: 0 }],
+        frameRate: 1,
         repeat: -1
       });
     }
 
-    // Create run animation
+    // Create run animation (same frame, will use movement tweens)
     if (!scene.anims.exists(`${spriteKey}_run`)) {
       scene.anims.create({
         key: `${spriteKey}_run`,
-        frames: scene.anims.generateFrameNumbers(spriteKey, { 
-          start: this.classData.animations.idle.frames, 
-          end: this.classData.animations.idle.frames + this.classData.animations.run.frames - 1 
-        }),
-        frameRate: this.classData.animations.run.frameRate,
+        frames: [{ key: spriteKey, frame: 0 }],
+        frameRate: 1,
         repeat: -1
       });
     }
 
-    // Create attack animation
+    // Create attack animation (same frame, will use effects)
     if (!scene.anims.exists(`${spriteKey}_attack`)) {
       scene.anims.create({
         key: `${spriteKey}_attack`,
-        frames: scene.anims.generateFrameNumbers(spriteKey, { 
-          start: this.classData.animations.idle.frames + this.classData.animations.run.frames, 
-          end: this.classData.animations.idle.frames + this.classData.animations.run.frames + this.classData.animations.attack.frames - 1 
-        }),
-        frameRate: this.classData.animations.attack.frameRate,
+        frames: [{ key: spriteKey, frame: 0 }],
+        frameRate: 1,
         repeat: 0
       });
     }
 
-    // Create special animation
+    // Create special animation (same frame, will use special effects)
     if (!scene.anims.exists(`${spriteKey}_special`)) {
       scene.anims.create({
         key: `${spriteKey}_special`,
-        frames: scene.anims.generateFrameNumbers(spriteKey, { 
-          start: this.classData.animations.idle.frames + this.classData.animations.run.frames + this.classData.animations.attack.frames, 
-          end: this.classData.animations.idle.frames + this.classData.animations.run.frames + this.classData.animations.attack.frames + this.classData.animations.special.frames - 1 
-        }),
-        frameRate: this.classData.animations.special.frameRate,
+        frames: [{ key: spriteKey, frame: 0 }],
+        frameRate: 1,
         repeat: 0
       });
     }
   }
 
   /**
-   * Play idle animation
+   * Play idle animation with subtle bobbing effect
    */
   public playIdleAnimation(): void {
-    // Animations disabled for now due to missing sprites
-    // if (!this.isAttacking) {
-    //   this.play(`${this.classData.spriteKey}_idle`);
-    // }
+    if (!this.isAttacking) {
+      this.play(`${this.classData.spriteKey}_idle`);
+      
+      // Add subtle bobbing animation
+      this.scene.tweens.add({
+        targets: this,
+        y: this.originalY - 3,
+        duration: 1500,
+        ease: 'Sine.easeInOut',
+        yoyo: true,
+        repeat: -1
+      });
+    }
   }
 
   /**
-   * Play run animation
+   * Play run animation with bouncing effect
    */
   public playRunAnimation(): void {
-    // Animations disabled for now due to missing sprites
-    // this.play(`${this.classData.spriteKey}_run`);
+    this.play(`${this.classData.spriteKey}_run`);
+    
+    // Add bouncing effect while running
+    this.scene.tweens.add({
+      targets: this,
+      y: this.y - 8,
+      duration: 150,
+      ease: 'Power2',
+      yoyo: true,
+      repeat: 1
+    });
   }
 
   /**
    * Play animation by name (for AttackSequence compatibility)
    */
-  public playAnimation(_animationName: string): void {
-    // Animations disabled for now due to missing sprites
-    // const animKey = `${this.classData.spriteKey}_${animationName}`;
-    // if (this.scene.anims.exists(animKey)) {
-    //   this.play(animKey);
-    // } else {
-    //   // Fallback to idle if animation doesn't exist
-    //   this.playIdleAnimation();
-    // }
+  public playAnimation(animationName: string): void {
+    const animKey = `${this.classData.spriteKey}_${animationName}`;
+    if (this.scene.anims.exists(animKey)) {
+      this.play(animKey);
+    } else {
+      // Fallback to idle if animation doesn't exist
+      this.playIdleAnimation();
+    }
   }
 
   /**
@@ -282,7 +293,7 @@ export class PlayerCharacter extends Phaser.GameObjects.Sprite {
   }
 
   /**
-   * Perform special ability with enhanced effects
+   * Perform special ability (simplified version)
    */
   public async performSpecialAbility(): Promise<AttackResult> {
     if (this.isAttacking) {
@@ -292,23 +303,14 @@ export class PlayerCharacter extends Phaser.GameObjects.Sprite {
     this.isAttacking = true;
 
     return new Promise((resolve) => {
-      // Calculate special ability damage
+      // Calculate special ability damage (slightly higher than normal attack)
       const baseDamage = this.calculateDamage();
       const damage = baseDamage * this.classData.specialAbility.damageMultiplier;
-      
-      // Special abilities have different crit rules
-      let isCritical = false;
-      if (this.characterClass === CharacterClass.ROGUE) {
-        // Rogue backstab is guaranteed critical
-        isCritical = true;
-      } else {
-        isCritical = this.rollCritical();
-      }
-
+      const isCritical = this.rollCritical();
       const finalDamage = isCritical ? damage * GameConstants.CRIT_MULTIPLIER : damage;
 
-      // Play special ability sequence
-      this.playSpecialSequence().then(() => {
+      // Play simplified special sequence (same as attack but with different effects)
+      this.playAttackSequence().then(() => {
         this.isAttacking = false;
         resolve({
           damage: finalDamage,
@@ -321,363 +323,79 @@ export class PlayerCharacter extends Phaser.GameObjects.Sprite {
   }
 
   /**
-   * Play attack animation sequence (1.5 seconds total)
+   * Play attack animation sequence (0.8 seconds total as per requirements)
    */
   private async playAttackSequence(): Promise<void> {
     return new Promise((resolve) => {
-      // Phase 1: Run forward (300ms)
+      // Phase 1: Run forward (0.3s = 300ms)
       this.playRunAnimation();
       this.scene.tweens.add({
         targets: this,
-        x: this.originalX + 50,
+        x: this.originalX + 60,
         duration: 300,
         ease: 'Power2',
         onComplete: () => {
-          // Phase 2: Attack animation (200ms) - disabled for now
-          // this.play(`${this.classData.spriteKey}_attack`);
+          // Phase 2: Attack animation (0.2s = 200ms)
+          this.play(`${this.classData.spriteKey}_attack`);
           
-          this.scene.time.delayedCall(200, () => {
-            // Phase 3: Particles and damage (100ms)
-            this.scene.events.emit('player-attack-hit', { 
-              x: this.x, 
-              y: this.y, 
-              class: this.characterClass 
-            });
-            
-            this.scene.time.delayedCall(400, () => {
-              // Phase 4: Run back (300ms)
-              this.playRunAnimation();
-              this.setFlipX(true); // Face left when running back
-              
-              this.scene.tweens.add({
-                targets: this,
-                x: this.originalX,
-                duration: 300,
-                ease: 'Power2',
-                onComplete: () => {
-                  this.setFlipX(false); // Face right again
-                  this.playIdleAnimation();
-                  resolve();
-                }
-              });
-            });
-          });
-        }
-      });
-    });
-  }
-
-  /**
-   * Play special ability animation sequence
-   */
-  private async playSpecialSequence(): Promise<void> {
-    return new Promise((resolve) => {
-      // Handle class-specific special animations
-      switch (this.characterClass) {
-        case CharacterClass.WARRIOR:
-          this.playWarriorChargeSequence(resolve);
-          break;
-        case CharacterClass.MAGE:
-          this.playMageFireballSequence(resolve);
-          break;
-        case CharacterClass.ROGUE:
-          this.playRogueBackstabSequence(resolve);
-          break;
-        case CharacterClass.HEALER:
-          this.playHealerBuffSequence(resolve);
-          break;
-        default:
-          resolve();
-      }
-    });
-  }
-
-  /**
-   * Warrior charge attack sequence - 3-hit combo with enhanced animations
-   */
-  private playWarriorChargeSequence(resolve: () => void): void {
-    this.play(`${this.classData.spriteKey}_special`);
-    
-    // Charge forward with enhanced speed
-    this.scene.tweens.add({
-      targets: this,
-      x: this.originalX + 80,
-      duration: 200,
-      ease: 'Power3',
-      onComplete: () => {
-        // Triple hit sequence with increasing intensity
-        let hitCount = 0;
-        const performHit = () => {
-          hitCount++;
-          
-          // Screen shake increases with each hit
-          const shakeIntensity = hitCount * 2;
-          this.scene.cameras.main.shake(150, shakeIntensity);
-          
-          // Enhanced particle effects for each hit
-          this.scene.events.emit('player-special-hit', { 
-            x: this.x + 20, 
-            y: this.y, 
-            class: this.characterClass,
-            hitNumber: hitCount,
-            effect: 'warrior_combo'
-          });
-          
-          // Flash effect on character
-          this.setTint(0xff6600);
+          // Add attack flash effect
+          this.setTint(0xffffff);
           this.scene.time.delayedCall(100, () => this.clearTint());
           
-          if (hitCount < 3) {
-            this.scene.time.delayedCall(250, performHit);
-          } else {
-            // Final powerful hit with extra effects
-            this.scene.cameras.main.shake(300, 8);
-            this.scene.time.delayedCall(400, () => {
-              // Return to original position
-              this.scene.tweens.add({
-                targets: this,
-                x: this.originalX,
-                duration: 300,
-                ease: 'Power2',
-                onComplete: () => {
-                  this.playIdleAnimation();
-                  resolve();
-                }
-              });
-            });
-          }
-        };
-        
-        this.scene.time.delayedCall(100, performHit);
-      }
-    });
-  }
-
-  /**
-   * Mage fireball sequence - Explosive magic with screen shake and effects
-   */
-  private playMageFireballSequence(resolve: () => void): void {
-    this.play(`${this.classData.spriteKey}_special`);
-    
-    // Charging effect - glow and particles
-    this.setTint(0x4444ff);
-    
-    // Create charging particles around mage
-    this.scene.events.emit('player-special-charging', {
-      x: this.x,
-      y: this.y,
-      class: this.characterClass,
-      effect: 'mage_charging'
-    });
-    
-    this.scene.time.delayedCall(600, () => {
-      this.clearTint();
-      
-      // Create fireball projectile that travels to target
-      const fireballSprite = this.scene.add.circle(this.x, this.y, 8, 0xff4400);
-      fireballSprite.setStrokeStyle(2, 0xffff00);
-      
-      // Animate fireball to target
-      this.scene.tweens.add({
-        targets: fireballSprite,
-        x: this.x + 120,
-        y: this.y - 20,
-        duration: 400,
-        ease: 'Power2',
-        onComplete: () => {
-          // Explosion at target
-          this.scene.events.emit('player-special-hit', { 
-            x: fireballSprite.x, 
-            y: fireballSprite.y, 
-            class: this.characterClass,
-            effect: 'fireball_explosion'
+          // Emit attack hit event for damage numbers and effects
+          this.scene.events.emit('player-attack-hit', { 
+            x: this.x + 20, 
+            y: this.y, 
+            class: this.characterClass 
           });
           
-          // Massive screen shake for explosion
-          this.scene.cameras.main.shake(500, GameConstants.SHAKE_BOSS_PHASE);
-          
-          // Remove fireball sprite
-          fireballSprite.destroy();
-          
-          this.scene.time.delayedCall(300, () => {
-            this.playIdleAnimation();
-            resolve();
+          this.scene.time.delayedCall(200, () => {
+            // Phase 3: Run back (0.3s = 300ms)
+            this.playRunAnimation();
+            this.setFlipX(true); // Face left when running back
+            
+            this.scene.tweens.add({
+              targets: this,
+              x: this.originalX,
+              duration: 300,
+              ease: 'Power2',
+              onComplete: () => {
+                this.setFlipX(false); // Face right again
+                this.playIdleAnimation();
+                resolve();
+              }
+            });
           });
         }
       });
     });
   }
 
-  /**
-   * Rogue backstab teleport sequence - Teleport attack with guaranteed critical
-   */
-  private playRogueBackstabSequence(resolve: () => void): void {
-    // Shadow clone effect before teleport
-    const shadowClone = this.scene.add.sprite(this.x, this.y, this.classData.spriteKey);
-    shadowClone.setScale(this.scaleX, this.scaleY);
-    shadowClone.setTint(0x000000);
-    shadowClone.setAlpha(0.5);
-    
-    // Fade out main character (teleport away)
-    this.scene.tweens.add({
-      targets: this,
-      alpha: 0,
-      scaleX: 0.5,
-      scaleY: 0.5,
-      duration: 150,
-      onComplete: () => {
-        // Teleport behind boss with stealth particles
-        this.x = this.originalX + 110;
-        this.setScale(2); // Reset scale
-        this.play(`${this.classData.spriteKey}_special`);
-        
-        // Stealth particles at teleport location
-        this.scene.events.emit('player-special-charging', {
-          x: this.x,
-          y: this.y,
-          class: this.characterClass,
-          effect: 'rogue_stealth'
-        });
-        
-        // Fade in with enhanced speed
-        this.scene.tweens.add({
-          targets: this,
-          alpha: 1,
-          duration: 100,
-          onComplete: () => {
-            // Critical backstab hit with time freeze effect
-            this.scene.time.timeScale = 0.1; // Slow motion effect
-            
-            this.scene.events.emit('player-special-hit', { 
-              x: this.x, 
-              y: this.y, 
-              class: this.characterClass,
-              effect: 'backstab_critical',
-              guaranteed_critical: true
-            });
-            
-            // Flash the screen for critical impact
-            const flashOverlay = this.scene.add.rectangle(0, 0, this.scene.scale.width, this.scene.scale.height, 0xffffff, 0.8);
-            flashOverlay.setOrigin(0);
-            
-            this.scene.time.delayedCall(100, () => {
-              this.scene.time.timeScale = 1; // Resume normal time
-              flashOverlay.destroy();
-              
-              this.scene.time.delayedCall(200, () => {
-                // Teleport back with smoke effect
-                this.scene.tweens.add({
-                  targets: this,
-                  alpha: 0,
-                  duration: 150,
-                  onComplete: () => {
-                    this.x = this.originalX;
-                    this.scene.tweens.add({
-                      targets: this,
-                      alpha: 1,
-                      duration: 150,
-                      onComplete: () => {
-                        // Remove shadow clone
-                        shadowClone.destroy();
-                        this.playIdleAnimation();
-                        resolve();
-                      }
-                    });
-                  }
-                });
-              });
-            });
-          }
-        });
-      }
-    });
-    
-    // Animate shadow clone to fade out
-    this.scene.tweens.add({
-      targets: shadowClone,
-      alpha: 0,
-      duration: 1000,
-      onComplete: () => {
-        if (shadowClone.active) {
-          shadowClone.destroy();
-        }
-      }
-    });
-  }
+
 
   /**
-   * Healer buff aura sequence - Enhances next 5 community attacks (+20% damage)
-   */
-  private playHealerBuffSequence(resolve: () => void): void {
-    this.play(`${this.classData.spriteKey}_special`);
-    
-    // Pulsing healing aura effect
-    const originalScale = this.scaleX;
-    
-    // Create expanding aura rings
-    for (let i = 0; i < 3; i++) {
-      this.scene.time.delayedCall(i * 200, () => {
-        const auraRing = this.scene.add.circle(this.x, this.y, 10, 0x00ff00, 0);
-        auraRing.setStrokeStyle(3, 0x80ff80, 0.8);
-        
-        this.scene.tweens.add({
-          targets: auraRing,
-          radius: 100,
-          alpha: 0,
-          duration: 800,
-          ease: 'Power2',
-          onComplete: () => auraRing.destroy()
-        });
-      });
-    }
-    
-    // Healing glow effect on character
-    this.setTint(0x80ff80);
-    
-    // Pulsing scale effect
-    this.scene.tweens.add({
-      targets: this,
-      scaleX: originalScale * 1.2,
-      scaleY: originalScale * 1.2,
-      duration: 300,
-      yoyo: true,
-      repeat: 2,
-      ease: 'Sine.easeInOut'
-    });
-    
-    // Emit community buff event
-    this.scene.events.emit('player-special-hit', { 
-      x: this.x, 
-      y: this.y, 
-      class: this.characterClass,
-      effect: 'community_buff_aura'
-    });
-    
-    // Sparkle particles around healer
-    this.scene.events.emit('player-special-charging', {
-      x: this.x,
-      y: this.y,
-      class: this.characterClass,
-      effect: 'healer_sparkles'
-    });
-    
-    this.scene.time.delayedCall(1000, () => {
-      this.clearTint();
-      this.setScale(originalScale);
-      this.playIdleAnimation();
-      resolve();
-    });
-  }
-
-  /**
-   * Calculate base damage for this character
+   * Calculate damage with simplified mechanics (similar output across classes)
    */
   private calculateDamage(): number {
-    const baseDamage = this.classData.baseDamage;
-    const levelMultiplier = 1 + (this.level - 1) * 0.05; // 5% per level
-    const variance = Phaser.Math.FloatBetween(0.9, 1.1); // ±10% variance
+    // Base damage ranges by class (minimal differences as per requirements)
+    const baseDamageRanges = {
+      [CharacterClass.WARRIOR]: [180, 220],
+      [CharacterClass.MAGE]: [170, 230], 
+      [CharacterClass.ROGUE]: [160, 240],
+      [CharacterClass.HEALER]: [175, 225]
+    };
     
-    return Math.floor(baseDamage * levelMultiplier * variance);
+    const range = baseDamageRanges[this.characterClass] || [180, 220];
+    const [min, max] = range;
+    let damage = Phaser.Math.Between(min as number, max as number);
+    
+    // Simple level scaling (2% per level)
+    damage *= (1 + ((this.level || 1) - 1) * 0.02);
+    
+    // Random variance ±15%
+    damage *= Phaser.Math.FloatBetween(0.85, 1.15);
+    
+    return Math.floor(damage);
   }
 
   /**
@@ -723,13 +441,24 @@ export class PlayerCharacter extends Phaser.GameObjects.Sprite {
   }
 
   /**
-   * Reset position to original
+   * Reset position to original and stop all tweens
    */
   public resetPosition(): void {
+    // Stop all tweens on this character
+    this.scene.tweens.killTweensOf(this);
+    
+    // Reset position and state
     this.x = this.originalX;
     this.y = this.originalY;
     this.setFlipX(false);
     this.setAlpha(1);
     this.clearTint();
+    this.setScale(2);
+    this.isAttacking = false;
+    
+    // Restart idle animation
+    this.playIdleAnimation();
   }
+
+
 }

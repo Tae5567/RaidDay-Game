@@ -4,6 +4,8 @@ import { ParticleSystem } from '../systems/ParticleSystem';
 import { SynchronizationSystem } from '../systems/SynchronizationSystem';
 import { BossData, getCurrentBoss, getBossByDay } from '../entities/BossEntity';
 import { LeaderboardEntry, PlayerData } from '../../../shared/types/api';
+import { TransitionSystem } from '../systems/TransitionSystem';
+import { AnimationSystem } from '../systems/AnimationSystem';
 
 /**
  * Victory - Boss defeat celebration and rewards scene
@@ -16,6 +18,7 @@ export class Victory extends Scene {
   private leaderboard?: Phaser.GameObjects.Container;
   private particleSystem?: ParticleSystem;
   private synchronizationSystem?: SynchronizationSystem;
+  private transitionSystem?: TransitionSystem;
   private bossData?: BossData;
   private playerData: PlayerData | undefined;
   private leaderboardData: LeaderboardEntry[] = [];
@@ -50,13 +53,20 @@ export class Victory extends Scene {
     }
   }
 
-  create(): void {
-    // Initialize particle system
+  async create(): Promise<void> {
+    // Initialize systems
     this.particleSystem = new ParticleSystem(this);
+    this.transitionSystem = new TransitionSystem(this);
     
     // Initialize synchronization system for leaderboard updates
     this.synchronizationSystem = new SynchronizationSystem(this);
     this.setupSynchronizationCallbacks();
+    
+    // Smooth transition in with celebration effect
+    await this.transitionSystem.transitionIn({
+      type: 'zoom',
+      duration: GameConstants.TRANSITION_DURATION_SLOW
+    });
     
     // Enable physics for loot rain
     this.physics.world.setBounds(0, 0, this.scale.width, this.scale.height);
@@ -88,7 +98,9 @@ export class Victory extends Scene {
 
     // Auto-return to splash after delay
     this.time.delayedCall(15000, () => {
-      this.scene.start('Splash');
+      if (this.transitionSystem) {
+        this.transitionSystem.quickFade('Splash');
+      }
     });
   }
 
@@ -138,39 +150,63 @@ export class Victory extends Scene {
     // Play death animation
     bossSprite.play(`${this.bossData?.spriteKey || 'boss_lag_spike'}_death`);
     
-    // Screen flash effect (bright white flash)
+    // Enhanced screen flash effect with multiple colors
     const flash = this.add.rectangle(0, 0, width, height, 0xffffff, 1).setOrigin(0);
     this.tweens.add({
       targets: flash,
       alpha: 0,
       duration: 300,
       ease: 'Power2',
-      onComplete: () => flash.destroy()
-    });
-    
-    // Massive screen shake for boss death
-    this.cameras.main.shake(1000, 12);
-    
-    // Particle explosion at boss position
-    this.time.delayedCall(400, () => {
-      this.particleSystem?.createDeathExplosion(bossSprite.x, bossSprite.y);
-      
-      // Additional explosion particles for dramatic effect
-      for (let i = 0; i < 3; i++) {
-        this.time.delayedCall(i * 200, () => {
-          const offsetX = Phaser.Math.Between(-50, 50);
-          const offsetY = Phaser.Math.Between(-30, 30);
-          this.particleSystem?.createDeathExplosion(bossSprite.x + offsetX, bossSprite.y + offsetY);
+      onComplete: () => {
+        // Secondary flash with boss theme color
+        const colorFlash = this.add.rectangle(0, 0, width, height, this.bossData?.hitEffect?.flashColor || 0xff0000, 0.6).setOrigin(0);
+        this.tweens.add({
+          targets: colorFlash,
+          alpha: 0,
+          duration: 500,
+          ease: 'Power2',
+          onComplete: () => {
+            flash.destroy();
+            colorFlash.destroy();
+          }
         });
       }
     });
     
-    // Fade out boss sprite after explosion
-    this.time.delayedCall(800, () => {
+    // Massive screen shake for boss death with multiple phases
+    this.cameras.main.shake(1000, 15);
+    
+    // Enhanced particle explosion sequence
+    this.time.delayedCall(200, () => {
+      // Initial massive explosion
+      this.particleSystem?.createDeathExplosion(bossSprite.x, bossSprite.y);
+      
+      // Multiple secondary explosions in a circle pattern
+      for (let i = 0; i < 8; i++) {
+        this.time.delayedCall(i * 100, () => {
+          const angle = (i / 8) * Math.PI * 2;
+          const radius = 80;
+          const offsetX = Math.cos(angle) * radius;
+          const offsetY = Math.sin(angle) * radius;
+          this.particleSystem?.createDeathExplosion(bossSprite.x + offsetX, bossSprite.y + offsetY);
+        });
+      }
+      
+      // Final central explosion
+      this.time.delayedCall(1000, () => {
+        this.particleSystem?.createDeathExplosion(bossSprite.x, bossSprite.y);
+      });
+    });
+    
+    // Enhanced boss death animation with rotation and scaling
+    this.time.delayedCall(600, () => {
       this.tweens.add({
         targets: bossSprite,
+        scaleX: 2,
+        scaleY: 2,
+        rotation: Math.PI * 2,
         alpha: 0,
-        duration: 1000,
+        duration: 1500,
         ease: 'Power2',
         onComplete: () => {
           bossSprite.destroy();
@@ -203,7 +239,7 @@ export class Victory extends Scene {
   private playVictorySequence(): void {
     const { width, height } = this.scale;
 
-    // Main victory text with dramatic entrance
+    // Enhanced victory text with multiple effects
     this.celebrationText = this.add.text(width / 2, height * 0.2, 'VICTORY!', {
       fontFamily: 'Arial Black',
       fontSize: '64px',
@@ -212,40 +248,93 @@ export class Victory extends Scene {
       strokeThickness: 6,
     }).setOrigin(0.5);
 
-    // Animate victory text with bounce effect
+    // Add glow effect to victory text
+    const glowEffect = this.add.text(width / 2, height * 0.2, 'VICTORY!', {
+      fontFamily: 'Arial Black',
+      fontSize: '68px',
+      color: '#ffffff',
+    }).setOrigin(0.5);
+    glowEffect.setAlpha(0.3);
+
+    // Animate victory text with enhanced bounce effect
     this.celebrationText.setScale(0);
+    glowEffect.setScale(0);
+    
     this.tweens.add({
-      targets: this.celebrationText,
+      targets: [this.celebrationText, glowEffect],
       scaleX: 1.3,
       scaleY: 1.3,
       duration: 600,
       ease: 'Back.easeOut',
       onComplete: () => {
         this.tweens.add({
-          targets: this.celebrationText,
+          targets: [this.celebrationText, glowEffect],
           scaleX: 1,
           scaleY: 1,
           duration: 200,
           ease: 'Power2'
         });
+        
+        // Add pulsing glow effect
+        this.tweens.add({
+          targets: glowEffect,
+          alpha: 0.1,
+          duration: 1000,
+          ease: 'Sine.easeInOut',
+          yoyo: true,
+          repeat: -1
+        });
       }
     });
 
-    // Boss defeated message with boss name
+    // Enhanced boss defeated message with celebration effects
     this.time.delayedCall(800, () => {
       const bossName = this.bossData?.name || 'The Lag Spike';
-      this.add.text(width / 2, height * 0.3, `${bossName} has been defeated!`, {
-        fontFamily: 'Arial',
+      const defeatedText = this.add.text(width / 2, height * 0.3, `🎉 ${bossName} has been defeated! 🎉`, {
+        fontFamily: 'Arial Black',
         fontSize: '24px',
         color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 3,
         align: 'center',
       }).setOrigin(0.5);
+      
+      // Animate defeated text
+      defeatedText.setAlpha(0);
+      this.tweens.add({
+        targets: defeatedText,
+        alpha: 1,
+        y: defeatedText.y - 10,
+        duration: 500,
+        ease: 'Power2'
+      });
+      
+      // Community celebration message
+      this.time.delayedCall(500, () => {
+        const communityText = this.add.text(width / 2, height * 0.35, 'The community has triumphed together!', {
+          fontFamily: 'Arial',
+          fontSize: '18px',
+          color: '#00ff00',
+          align: 'center',
+        }).setOrigin(0.5);
+        
+        communityText.setAlpha(0);
+        this.tweens.add({
+          targets: communityText,
+          alpha: 1,
+          duration: 500,
+          ease: 'Power2'
+        });
+      });
+      
+      // Add celebration particle effects
+      this.createCelebrationEffects();
       
       // Start loot rain after victory text
       this.createLootRain();
     });
 
-    // Start other UI elements
+    // Start other UI elements with staggered timing
     this.time.delayedCall(1500, () => {
       this.createProgressionUI();
     });
@@ -262,6 +351,58 @@ export class Victory extends Scene {
     this.time.delayedCall(4000, () => {
       this.createNextBossPreview();
     });
+  }
+
+  private createCelebrationEffects(): void {
+    const { width, height } = this.scale;
+    
+    // Create fireworks-style particle bursts
+    for (let i = 0; i < 5; i++) {
+      this.time.delayedCall(i * 300, () => {
+        const x = Phaser.Math.Between(width * 0.2, width * 0.8);
+        const y = Phaser.Math.Between(height * 0.1, height * 0.4);
+        
+        // Create colorful burst effect
+        this.particleSystem?.createSpecialEffect(x, y, 'victory_burst');
+        
+        // Add screen flash for each burst
+        const burstFlash = this.add.rectangle(0, 0, width, height, 
+          Phaser.Utils.Array.GetRandom([0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff]), 0.2).setOrigin(0);
+        this.tweens.add({
+          targets: burstFlash,
+          alpha: 0,
+          duration: 200,
+          onComplete: () => burstFlash.destroy()
+        });
+      });
+    }
+    
+    // Create confetti effect
+    for (let i = 0; i < 20; i++) {
+      this.time.delayedCall(i * 50, () => {
+        const confetti = this.add.rectangle(
+          Phaser.Math.Between(0, width),
+          -10,
+          Phaser.Math.Between(4, 8),
+          Phaser.Math.Between(4, 8),
+          Phaser.Utils.Array.GetRandom([0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff, 0x00ffff])
+        );
+        
+        // Add physics for realistic falling
+        this.physics.add.existing(confetti);
+        const body = confetti.body as Phaser.Physics.Arcade.Body;
+        body.setVelocity(
+          Phaser.Math.Between(-50, 50),
+          Phaser.Math.Between(100, 200)
+        );
+        body.setAngularVelocity(Phaser.Math.Between(-300, 300));
+        
+        // Remove after falling off screen
+        this.time.delayedCall(5000, () => {
+          if (confetti.active) confetti.destroy();
+        });
+      });
+    }
   }
 
   private createLootRain(): void {
@@ -643,114 +784,162 @@ export class Victory extends Scene {
   private createNextBossPreview(): void {
     const { width, height } = this.scale;
 
-    // Get next boss data
-    const nextBoss = this.getNextBoss();
-    
-    // Next boss preview container
-    const previewContainer = this.add.container(width / 2, height * 0.9);
-    
-    // Preview background
-    const previewBg = this.add.graphics();
-    previewBg.fillStyle(0x000000, 0.6);
-    previewBg.fillRoundedRect(-200, -40, 400, 80, 10);
-    previewBg.lineStyle(2, 0x666666);
-    previewBg.strokeRoundedRect(-200, -40, 400, 80, 10);
-    previewContainer.add(previewBg);
+    // Fetch next boss data from server
+    this.fetchNextBossData().then((nextBossData) => {
+      // Next boss preview container
+      const previewContainer = this.add.container(width / 2, height * 0.9);
+      
+      // Enhanced preview background with boss theme colors
+      const previewBg = this.add.graphics();
+      previewBg.fillStyle(0x000000, 0.8);
+      previewBg.fillRoundedRect(-220, -50, 440, 100, 15);
+      previewBg.lineStyle(3, this.getBossThemeColor(nextBossData.nextBoss?.theme || 'gaming'));
+      previewBg.strokeRoundedRect(-220, -50, 440, 100, 15);
+      previewContainer.add(previewBg);
 
-    // Next boss title
-    const nextBossText = this.add.text(0, -25, `Next Boss: ${nextBoss.name}`, {
-      fontFamily: 'Arial Black',
-      fontSize: '16px',
-      color: '#ffffff',
-      align: 'center',
-    }).setOrigin(0.5);
-    previewContainer.add(nextBossText);
+      // Next boss title with enhanced styling
+      const nextBossText = this.add.text(0, -30, `🔮 Next Boss: ${nextBossData.nextBoss?.name || 'Unknown Boss'}`, {
+        fontFamily: 'Arial Black',
+        fontSize: '18px',
+        color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 2,
+        align: 'center',
+      }).setOrigin(0.5);
+      previewContainer.add(nextBossText);
 
-    // Boss theme
-    const themeText = this.add.text(0, -8, `${nextBoss.theme} Theme • Level ${nextBoss.level}`, {
-      fontFamily: 'Arial',
-      fontSize: '12px',
-      color: '#cccccc',
-      align: 'center',
-    }).setOrigin(0.5);
-    previewContainer.add(themeText);
-
-    // Countdown timer
-    const countdownText = this.add.text(0, 10, this.getCountdownText(), {
-      fontFamily: 'Arial',
-      fontSize: '14px',
-      color: '#ffff00',
-    }).setOrigin(0.5);
-    previewContainer.add(countdownText);
-
-    // Update countdown every second
-    this.time.addEvent({
-      delay: 1000,
-      callback: () => {
-        countdownText.setText(this.getCountdownText());
-      },
-      loop: true
-    });
-
-    // Share Session button
-    const shareButton = this.add.container(width / 2 - 80, height * 0.97);
-    
-    const shareBg = this.add.rectangle(0, 0, 150, 30, 0x4CAF50)
-      .setStrokeStyle(2, 0xffffff);
-    
-    const shareText = this.add.text(0, 0, 'Share My Damage', {
-      fontFamily: 'Arial',
-      fontSize: '12px',
-      color: '#ffffff',
-    }).setOrigin(0.5);
-
-    shareButton.add([shareBg, shareText]);
-
-    // Share button hover effects
-    shareBg.setInteractive({ useHandCursor: true })
-      .on('pointerover', () => {
-        shareBg.setFillStyle(0x45a049);
-      })
-      .on('pointerout', () => {
-        shareBg.setFillStyle(0x4CAF50);
-      })
-      .on('pointerdown', () => {
-        this.shareSessionRecap();
+      // Add anticipation glow effect to next boss text
+      this.tweens.add({
+        targets: nextBossText,
+        alpha: 0.7,
+        duration: 1500,
+        ease: 'Sine.easeInOut',
+        yoyo: true,
+        repeat: -1
       });
 
-    // Return to menu button
-    const returnButton = this.add.container(width / 2 + 80, height * 0.97);
-    
-    const buttonBg = this.add.rectangle(0, 0, 150, 30, GameConstants.COLORS.BUTTON_ENABLED)
-      .setStrokeStyle(2, 0xffffff);
-    
-    const buttonText = this.add.text(0, 0, 'Return to Menu', {
-      fontFamily: 'Arial',
-      fontSize: '12px',
-      color: '#ffffff',
-    }).setOrigin(0.5);
+      // Boss theme with enhanced styling
+      const themeText = this.add.text(0, -10, `${nextBossData.nextBoss?.theme || 'Unknown'} Theme • Level ${nextBossData.nextBoss?.level || 1} • 50,000 HP`, {
+        fontFamily: 'Arial',
+        fontSize: '12px',
+        color: '#cccccc',
+        align: 'center',
+      }).setOrigin(0.5);
+      previewContainer.add(themeText);
 
-    returnButton.add([buttonBg, buttonText]);
+      // Add anticipation message
+      const anticipationText = this.add.text(0, 35, 'Prepare for tomorrow\'s battle!', {
+        fontFamily: 'Arial',
+        fontSize: '10px',
+        color: '#ffaa00',
+        align: 'center',
+      }).setOrigin(0.5);
+      previewContainer.add(anticipationText);
 
-    // Button hover effects
-    buttonBg.setInteractive({ useHandCursor: true })
-      .on('pointerover', () => {
-        buttonBg.setFillStyle(GameConstants.COLORS.BUTTON_HOVER);
-      })
-      .on('pointerout', () => {
-        buttonBg.setFillStyle(GameConstants.COLORS.BUTTON_ENABLED);
-      })
-      .on('pointerdown', () => {
-        this.scene.start('Splash');
+      // Add subtle pulsing effect to anticipation text
+      this.tweens.add({
+        targets: anticipationText,
+        scale: 1.1,
+        duration: 2000,
+        ease: 'Sine.easeInOut',
+        yoyo: true,
+        repeat: -1
       });
 
-    // Animate preview container appearance
-    previewContainer.setAlpha(0);
-    this.tweens.add({
-      targets: previewContainer,
-      alpha: 1,
-      duration: 1000,
-      ease: 'Power2'
+      // Enhanced countdown timer with server data
+      const countdownText = this.add.text(0, 15, this.formatCountdown(nextBossData.countdown), {
+        fontFamily: 'Arial Black',
+        fontSize: '16px',
+        color: '#ffff00',
+        stroke: '#000000',
+        strokeThickness: 2,
+      }).setOrigin(0.5);
+      previewContainer.add(countdownText);
+
+      // Update countdown every second using server data
+      this.time.addEvent({
+        delay: 1000,
+        callback: () => {
+          // Recalculate countdown based on server spawn time
+          const now = Date.now();
+          const spawnTime = new Date(nextBossData.spawnTime).getTime();
+          const timeRemaining = Math.max(0, spawnTime - now);
+          
+          const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
+          const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+          
+          countdownText.setText(`Spawns in: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+        },
+        loop: true
+      });
+
+      // Share Session button
+      const shareButton = this.add.container(width / 2 - 80, height * 0.97);
+      
+      const shareBg = this.add.rectangle(0, 0, 150, 30, 0x4CAF50)
+        .setStrokeStyle(2, 0xffffff);
+      
+      const shareText = this.add.text(0, 0, 'Share My Damage', {
+        fontFamily: 'Arial',
+        fontSize: '12px',
+        color: '#ffffff',
+      }).setOrigin(0.5);
+
+      shareButton.add([shareBg, shareText]);
+
+      // Share button hover effects
+      shareBg.setInteractive({ useHandCursor: true })
+        .on('pointerover', () => {
+          shareBg.setFillStyle(0x45a049);
+        })
+        .on('pointerout', () => {
+          shareBg.setFillStyle(0x4CAF50);
+        })
+        .on('pointerdown', () => {
+          this.shareSessionRecap();
+        });
+
+      // Return to menu button
+      const returnButton = this.add.container(width / 2 + 80, height * 0.97);
+      
+      const buttonBg = this.add.rectangle(0, 0, 150, 30, GameConstants.COLORS.BUTTON_ENABLED)
+        .setStrokeStyle(2, 0xffffff);
+      
+      const buttonText = this.add.text(0, 0, 'Return to Menu', {
+        fontFamily: 'Arial',
+        fontSize: '12px',
+        color: '#ffffff',
+      }).setOrigin(0.5);
+
+      returnButton.add([buttonBg, buttonText]);
+
+      // Button hover effects
+      buttonBg.setInteractive({ useHandCursor: true })
+        .on('pointerover', () => {
+          buttonBg.setFillStyle(GameConstants.COLORS.BUTTON_HOVER);
+        })
+        .on('pointerout', () => {
+          buttonBg.setFillStyle(GameConstants.COLORS.BUTTON_ENABLED);
+        })
+        .on('pointerdown', () => {
+          if (this.transitionSystem) {
+            this.transitionSystem.quickFade('Splash');
+          }
+        });
+
+      // Animate preview container appearance
+      previewContainer.setAlpha(0);
+      this.tweens.add({
+        targets: previewContainer,
+        alpha: 1,
+        duration: 1000,
+        ease: 'Power2'
+      });
+    }).catch((error) => {
+      console.error('Failed to fetch next boss data:', error);
+      // Fallback to local next boss calculation
+      this.createFallbackNextBossPreview();
     });
   }
 
@@ -764,13 +953,90 @@ export class Victory extends Scene {
     return getBossByDay(dayName || 'monday');
   }
 
+  private async fetchNextBossData(): Promise<any> {
+    try {
+      const response = await fetch('/api/nextBoss');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.status === 'success') {
+          return data;
+        }
+      }
+      throw new Error('Failed to fetch next boss data');
+    } catch (error) {
+      console.error('Error fetching next boss data:', error);
+      throw error;
+    }
+  }
+
+  private formatCountdown(countdown: { hours: number; minutes: number; seconds: number }): string {
+    return `Spawns in: ${countdown.hours.toString().padStart(2, '0')}:${countdown.minutes.toString().padStart(2, '0')}:${countdown.seconds.toString().padStart(2, '0')}`;
+  }
+
+  private getBossThemeColor(theme: string): number {
+    const themeColors: Record<string, number> = {
+      'gaming': 0xff0000,
+      'internet': 0x00ff00,
+      'social_media': 0xff69b4,
+      'work': 0xffff00,
+      'entertainment': 0x800080,
+      'sports': 0x000000,
+      'memes': 0xffa500
+    };
+    return themeColors[theme] || 0xffffff;
+  }
+
+  private createFallbackNextBossPreview(): void {
+    const { width, height } = this.scale;
+    
+    // Fallback to local calculation
+    const nextBoss = this.getNextBoss();
+    
+    // Simple fallback preview
+    const previewContainer = this.add.container(width / 2, height * 0.9);
+    
+    const previewBg = this.add.graphics();
+    previewBg.fillStyle(0x000000, 0.6);
+    previewBg.fillRoundedRect(-200, -40, 400, 80, 10);
+    previewBg.lineStyle(2, 0x666666);
+    previewBg.strokeRoundedRect(-200, -40, 400, 80, 10);
+    previewContainer.add(previewBg);
+
+    const nextBossText = this.add.text(0, -15, `Next Boss: ${nextBoss.name}`, {
+      fontFamily: 'Arial Black',
+      fontSize: '16px',
+      color: '#ffffff',
+    }).setOrigin(0.5);
+    previewContainer.add(nextBossText);
+
+    const countdownText = this.add.text(0, 10, this.getCountdownText(), {
+      fontFamily: 'Arial',
+      fontSize: '14px',
+      color: '#ffff00',
+    }).setOrigin(0.5);
+    previewContainer.add(countdownText);
+
+    previewContainer.setAlpha(0);
+    this.tweens.add({
+      targets: previewContainer,
+      alpha: 1,
+      duration: 1000,
+      ease: 'Power2'
+    });
+  }
+
   private getCountdownText(): string {
     const now = new Date();
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(0, 0, 0, 0); // Next boss spawns at midnight
+    const next8AM = new Date();
+    next8AM.setDate(next8AM.getDate() + 1);
+    next8AM.setHours(8, 0, 0, 0); // Next boss spawns at 8 AM, not midnight
     
-    const timeUntilNext = tomorrow.getTime() - now.getTime();
+    // If it's already past 8 AM today, set for tomorrow
+    if (now.getHours() >= 8) {
+      next8AM.setDate(next8AM.getDate() + 1);
+    }
+    
+    const timeUntilNext = next8AM.getTime() - now.getTime();
     const hours = Math.floor(timeUntilNext / (1000 * 60 * 60));
     const minutes = Math.floor((timeUntilNext % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((timeUntilNext % (1000 * 60)) / 1000);
@@ -841,10 +1107,10 @@ export class Victory extends Scene {
       
       if (response.ok) {
         const data = await response.json();
-        if (data.status === 'success') {
+        if (data.status === 'success' && data.victoryPost) {
           console.log('Victory post created:', data.victoryPost);
           
-          // Show victory post notification
+          // Show enhanced victory post notification with details
           const { width } = this.scale;
           const postText = this.add.text(width / 2, 50, '🎉 Victory post created on r/RaidDay!', {
             fontFamily: 'Arial Black',
@@ -854,19 +1120,33 @@ export class Victory extends Scene {
             strokeThickness: 2,
           }).setOrigin(0.5);
 
-          // Animate notification
+          // Show top contributors notification
+          const contributorsText = this.add.text(width / 2, 75, 
+            `Top contributors: ${data.victoryPost.topPlayers.slice(0, 3).map((p: any) => p.redditUsername).join(', ')}`, {
+            fontFamily: 'Arial',
+            fontSize: '12px',
+            color: '#ffffff',
+            align: 'center',
+          }).setOrigin(0.5);
+
+          // Animate notifications
           postText.setAlpha(0);
+          contributorsText.setAlpha(0);
+          
           this.tweens.add({
-            targets: postText,
+            targets: [postText, contributorsText],
             alpha: 1,
             duration: 500,
             onComplete: () => {
-              this.time.delayedCall(3000, () => {
+              this.time.delayedCall(4000, () => {
                 this.tweens.add({
-                  targets: postText,
+                  targets: [postText, contributorsText],
                   alpha: 0,
                   duration: 500,
-                  onComplete: () => postText.destroy()
+                  onComplete: () => {
+                    postText.destroy();
+                    contributorsText.destroy();
+                  }
                 });
               });
             }
@@ -875,6 +1155,16 @@ export class Victory extends Scene {
       }
     } catch (error) {
       console.error('Failed to create victory post:', error);
+      
+      // Show error notification
+      const { width } = this.scale;
+      const errorText = this.add.text(width / 2, 50, 'Failed to create victory post', {
+        fontFamily: 'Arial',
+        fontSize: '14px',
+        color: '#ff4444',
+      }).setOrigin(0.5);
+
+      this.time.delayedCall(2000, () => errorText.destroy());
     }
   }
 

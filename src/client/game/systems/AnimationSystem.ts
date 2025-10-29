@@ -1,369 +1,525 @@
-import * as Phaser from 'phaser';
-import { GameConstants } from '../utils/GameConstants';
+import { Scene } from 'phaser';
+import { MobileUtils } from '../utils/MobileUtils';
+
+export interface EntranceConfig {
+  duration: number;
+  ease: string;
+  delay?: number;
+  fromScale?: number;
+  fromAlpha?: number;
+  fromY?: number;
+  fromX?: number;
+}
 
 /**
- * AnimationSystem - Manages sprite animations and animation configs
- * Handles character and boss animation sequences with queueing and state management
+ * AnimationSystem - Handles smooth entrance animations and transitions
+ * Provides mobile-optimized animations for boss and player entrances
  */
-export interface AnimationConfig {
-  key: string;
-  texture: string;
-  startFrame: number;
-  endFrame: number;
-  frameRate: number;
-  repeat?: number;
-  yoyo?: boolean;
-}
-
-export interface SpriteAnimationState {
-  currentAnimation: string | null;
-  queuedAnimations: string[];
-  isPlaying: boolean;
-  canInterrupt: boolean;
-}
-
 export class AnimationSystem {
-  private scene: Phaser.Scene;
-  private animationConfigs: Map<string, AnimationConfig>;
-  private spriteStates: Map<Phaser.GameObjects.Sprite, SpriteAnimationState>;
-  private loadedSpritesheets: Set<string>;
+  private scene: Scene;
+  private isMobile: boolean;
+  private activeAnimations: Map<string, Phaser.Tweens.Tween[]> = new Map();
 
-  constructor(scene: Phaser.Scene) {
+  constructor(scene: Scene) {
     this.scene = scene;
-    this.animationConfigs = new Map();
-    this.spriteStates = new Map();
-    this.loadedSpritesheets = new Set();
-    
-    this.initializeAnimationConfigs();
+    this.isMobile = MobileUtils.isMobile();
   }
 
-  private initializeAnimationConfigs(): void {
-    // Character animation configurations (32x32 sprites)
-    this.addAnimationConfig('warrior_idle', 'warrior', 0, 1, 2, -1);
-    this.addAnimationConfig('warrior_run', 'warrior', 2, 5, 8, -1);
-    this.addAnimationConfig('warrior_attack', 'warrior', 6, 8, 10, 0);
-    this.addAnimationConfig('warrior_special', 'warrior', 9, 12, 8, 0);
+  /**
+   * Create smooth entrance animation for boss (Requirements 7.2, 7.5)
+   */
+  public animateBossEntrance(
+    bossSprite: Phaser.GameObjects.Sprite,
+    config?: Partial<EntranceConfig>
+  ): Promise<void> {
+    const finalConfig: EntranceConfig = {
+      duration: this.isMobile ? 1000 : 1200, // Slightly longer for more impact
+      ease: 'Back.out',
+      delay: 200, // Small delay for dramatic effect
+      fromScale: 0.2,
+      fromAlpha: 0,
+      fromY: bossSprite.y - 150, // Drop from higher
+      ...config
+    };
 
-    this.addAnimationConfig('mage_idle', 'mage', 0, 1, 2, -1);
-    this.addAnimationConfig('mage_run', 'mage', 2, 5, 8, -1);
-    this.addAnimationConfig('mage_attack', 'mage', 6, 8, 10, 0);
-    this.addAnimationConfig('mage_special', 'mage', 9, 12, 8, 0);
+    // Set initial state
+    const originalY = bossSprite.y;
+    bossSprite.setScale(finalConfig.fromScale!);
+    bossSprite.setAlpha(finalConfig.fromAlpha!);
+    bossSprite.setY(finalConfig.fromY!);
 
-    this.addAnimationConfig('rogue_idle', 'rogue', 0, 1, 2, -1);
-    this.addAnimationConfig('rogue_run', 'rogue', 2, 5, 8, -1);
-    this.addAnimationConfig('rogue_attack', 'rogue', 6, 8, 10, 0);
-    this.addAnimationConfig('rogue_special', 'rogue', 9, 12, 8, 0);
+    return new Promise((resolve) => {
+      const tweens: Phaser.Tweens.Tween[] = [];
 
-    this.addAnimationConfig('healer_idle', 'healer', 0, 1, 2, -1);
-    this.addAnimationConfig('healer_run', 'healer', 2, 5, 8, -1);
-    this.addAnimationConfig('healer_attack', 'healer', 6, 8, 10, 0);
-    this.addAnimationConfig('healer_special', 'healer', 9, 12, 8, 0);
+      // Scale animation
+      const scaleTween = this.scene.tweens.add({
+        targets: bossSprite,
+        scaleX: 1,
+        scaleY: 1,
+        duration: finalConfig.duration,
+        ease: finalConfig.ease,
+        delay: finalConfig.delay || 0
+      });
 
-    // Boss animation configurations (128x128 sprites)
-    this.addAnimationConfig('boss_lag_spike_idle', 'boss_lag_spike', 0, 2, 2, -1);
-    this.addAnimationConfig('boss_lag_spike_hit', 'boss_lag_spike', 3, 4, 10, 0);
-    this.addAnimationConfig('boss_lag_spike_phase2', 'boss_lag_spike', 5, 7, 4, -1);
-    this.addAnimationConfig('boss_lag_spike_death', 'boss_lag_spike', 8, 15, 5, 0);
+      // Alpha animation
+      const alphaTween = this.scene.tweens.add({
+        targets: bossSprite,
+        alpha: 1,
+        duration: finalConfig.duration * 0.6,
+        ease: 'Power2.out',
+        delay: finalConfig.delay || 0
+      });
 
-    // Additional daily boss configurations
-    this.addAnimationConfig('boss_algorithm_idle', 'boss_algorithm', 0, 2, 2, -1);
-    this.addAnimationConfig('boss_algorithm_hit', 'boss_algorithm', 3, 4, 10, 0);
-    this.addAnimationConfig('boss_algorithm_phase2', 'boss_algorithm', 5, 7, 4, -1);
-    this.addAnimationConfig('boss_algorithm_death', 'boss_algorithm', 8, 15, 5, 0);
+      // Position animation
+      const positionTween = this.scene.tweens.add({
+        targets: bossSprite,
+        y: originalY,
+        duration: finalConfig.duration,
+        ease: finalConfig.ease,
+        delay: finalConfig.delay || 0,
+        onComplete: () => {
+          this.clearAnimations('boss-entrance');
+          resolve();
+        }
+      });
 
-    this.addAnimationConfig('boss_influencer_idle', 'boss_influencer', 0, 2, 2, -1);
-    this.addAnimationConfig('boss_influencer_hit', 'boss_influencer', 3, 4, 10, 0);
-    this.addAnimationConfig('boss_influencer_phase2', 'boss_influencer', 5, 7, 4, -1);
-    this.addAnimationConfig('boss_influencer_death', 'boss_influencer', 8, 15, 5, 0);
+      tweens.push(scaleTween, alphaTween, positionTween);
+      this.activeAnimations.set('boss-entrance', tweens);
 
-    this.addAnimationConfig('boss_deadline_idle', 'boss_deadline', 0, 2, 2, -1);
-    this.addAnimationConfig('boss_deadline_hit', 'boss_deadline', 3, 4, 10, 0);
-    this.addAnimationConfig('boss_deadline_phase2', 'boss_deadline', 5, 7, 4, -1);
-    this.addAnimationConfig('boss_deadline_death', 'boss_deadline', 8, 15, 5, 0);
-
-    this.addAnimationConfig('boss_spoiler_idle', 'boss_spoiler', 0, 2, 2, -1);
-    this.addAnimationConfig('boss_spoiler_hit', 'boss_spoiler', 3, 4, 10, 0);
-    this.addAnimationConfig('boss_spoiler_phase2', 'boss_spoiler', 5, 7, 4, -1);
-    this.addAnimationConfig('boss_spoiler_death', 'boss_spoiler', 8, 15, 5, 0);
-
-    this.addAnimationConfig('boss_referee_idle', 'boss_referee', 0, 2, 2, -1);
-    this.addAnimationConfig('boss_referee_hit', 'boss_referee', 3, 4, 10, 0);
-    this.addAnimationConfig('boss_referee_phase2', 'boss_referee', 5, 7, 4, -1);
-    this.addAnimationConfig('boss_referee_death', 'boss_referee', 8, 15, 5, 0);
-
-    this.addAnimationConfig('boss_cringe_idle', 'boss_cringe', 0, 2, 2, -1);
-    this.addAnimationConfig('boss_cringe_hit', 'boss_cringe', 3, 4, 10, 0);
-    this.addAnimationConfig('boss_cringe_phase2', 'boss_cringe', 5, 7, 4, -1);
-    this.addAnimationConfig('boss_cringe_death', 'boss_cringe', 8, 15, 5, 0);
+      // Add screen shake for dramatic effect
+      this.scene.time.delayedCall(finalConfig.delay! + finalConfig.duration * 0.8, () => {
+        this.scene.events.emit('camera-shake', 3);
+      });
+    });
   }
 
-  private addAnimationConfig(
-    key: string,
-    texture: string,
-    startFrame: number,
-    endFrame: number,
-    frameRate: number,
-    repeat: number = -1,
-    yoyo: boolean = false
+  /**
+   * Create smooth entrance animation for player character (Requirements 7.2, 7.5)
+   */
+  public animatePlayerEntrance(
+    playerSprite: Phaser.GameObjects.Sprite,
+    config?: Partial<EntranceConfig>
+  ): Promise<void> {
+    const finalConfig: EntranceConfig = {
+      duration: this.isMobile ? 700 : 900,
+      ease: 'Back.out',
+      delay: 600, // Wait for boss entrance to complete
+      fromScale: 0.3,
+      fromAlpha: 0,
+      fromY: playerSprite.y + 80, // Rise from below
+      ...config
+    };
+
+    // Set initial state
+    const originalY = playerSprite.y;
+    playerSprite.setScale(finalConfig.fromScale!);
+    playerSprite.setAlpha(finalConfig.fromAlpha!);
+    playerSprite.setY(finalConfig.fromY!);
+
+    return new Promise((resolve) => {
+      const tweens: Phaser.Tweens.Tween[] = [];
+
+      // Scale animation with slight bounce
+      const scaleTween = this.scene.tweens.add({
+        targets: playerSprite,
+        scaleX: 1,
+        scaleY: 1,
+        duration: finalConfig.duration,
+        ease: 'Back.out',
+        delay: finalConfig.delay || 0
+      });
+
+      // Alpha animation
+      const alphaTween = this.scene.tweens.add({
+        targets: playerSprite,
+        alpha: 1,
+        duration: finalConfig.duration * 0.7,
+        ease: 'Power2.out',
+        delay: finalConfig.delay || 0
+      });
+
+      // Position animation
+      const positionTween = this.scene.tweens.add({
+        targets: playerSprite,
+        y: originalY,
+        duration: finalConfig.duration,
+        ease: finalConfig.ease,
+        delay: finalConfig.delay || 0,
+        onComplete: () => {
+          this.clearAnimations('player-entrance');
+          resolve();
+        }
+      });
+
+      tweens.push(scaleTween, alphaTween, positionTween);
+      this.activeAnimations.set('player-entrance', tweens);
+    });
+  }
+
+  /**
+   * Animate UI elements entrance
+   */
+  public animateUIEntrance(
+    uiElements: Phaser.GameObjects.GameObject[],
+    config?: Partial<EntranceConfig>
+  ): Promise<void> {
+    const finalConfig: EntranceConfig = {
+      duration: this.isMobile ? 500 : 700,
+      ease: 'Back.out',
+      delay: 1200, // After both characters
+      fromAlpha: 0,
+      fromY: 30, // More pronounced slide
+      ...config
+    };
+
+    return new Promise((resolve) => {
+      const tweens: Phaser.Tweens.Tween[] = [];
+      let completedCount = 0;
+
+      uiElements.forEach((element, index) => {
+        if ('setAlpha' in element && 'y' in element) {
+          const originalY = (element as any).y;
+          (element as any).setAlpha(finalConfig.fromAlpha!);
+          (element as any).y = originalY - finalConfig.fromY!;
+
+          const tween = this.scene.tweens.add({
+            targets: element,
+            alpha: 1,
+            y: originalY,
+            duration: finalConfig.duration,
+            ease: finalConfig.ease,
+            delay: finalConfig.delay! + (index * 100), // Stagger animations
+            onComplete: () => {
+              completedCount++;
+              if (completedCount === uiElements.length) {
+                this.clearAnimations('ui-entrance');
+                resolve();
+              }
+            }
+          });
+
+          tweens.push(tween);
+        }
+      });
+
+      this.activeAnimations.set('ui-entrance', tweens);
+    });
+  }
+
+  /**
+   * Create attack impact animation with enhanced visual feedback
+   */
+  public animateAttackImpact(
+    targetSprite: Phaser.GameObjects.Sprite,
+    damage: number
+  ): Promise<void> {
+    return new Promise((resolve) => {
+      const tweens: Phaser.Tweens.Tween[] = [];
+
+      // Hit flash effect
+      const originalTint = targetSprite.tint;
+      const flashTween = this.scene.tweens.add({
+        targets: targetSprite,
+        tint: 0xff0000, // Red flash
+        duration: 100,
+        yoyo: true,
+        onComplete: () => {
+          targetSprite.setTint(originalTint);
+        }
+      });
+
+      // Scale punch effect proportional to damage
+      const scaleMultiplier = Math.min(1 + (damage / 1000), 1.2); // Max 1.2x scale
+      const scaleTween = this.scene.tweens.add({
+        targets: targetSprite,
+        scaleX: scaleMultiplier,
+        scaleY: scaleMultiplier,
+        duration: 150,
+        ease: 'Power2.out',
+        yoyo: true,
+        onComplete: () => {
+          this.clearAnimations('attack-impact');
+          resolve();
+        }
+      });
+
+      tweens.push(flashTween, scaleTween);
+      this.activeAnimations.set('attack-impact', tweens);
+    });
+  }
+
+  /**
+   * Create button press animation with enhanced feedback
+   */
+  public animateButtonPress(
+    button: Phaser.GameObjects.Container
+  ): Promise<void> {
+    return new Promise((resolve) => {
+      const pressTween = this.scene.tweens.add({
+        targets: button,
+        scaleX: 0.9,
+        scaleY: 0.9,
+        duration: 100,
+        ease: 'Power2.out',
+        yoyo: true,
+        onComplete: () => {
+          resolve();
+        }
+      });
+
+      this.activeAnimations.set('button-press', [pressTween]);
+    });
+  }
+
+  /**
+   * Create victory celebration animation
+   */
+  public animateVictoryCelebration(
+    elements: Phaser.GameObjects.GameObject[]
+  ): Promise<void> {
+    return new Promise((resolve) => {
+      const tweens: Phaser.Tweens.Tween[] = [];
+      let completedCount = 0;
+
+      elements.forEach((element, index) => {
+        if ('setScale' in element) {
+          const celebrationTween = this.scene.tweens.add({
+            targets: element,
+            scaleX: 1.2,
+            scaleY: 1.2,
+            duration: 300,
+            ease: 'Back.out',
+            delay: index * 100,
+            yoyo: true,
+            onComplete: () => {
+              completedCount++;
+              if (completedCount === elements.length) {
+                this.clearAnimations('victory-celebration');
+                resolve();
+              }
+            }
+          });
+
+          tweens.push(celebrationTween);
+        }
+      });
+
+      this.activeAnimations.set('victory-celebration', tweens);
+    });
+  }
+
+  /**
+   * Create floating animation for idle elements
+   */
+  public animateFloating(
+    sprite: Phaser.GameObjects.Sprite,
+    amplitude: number = 5,
+    duration: number = 2000
   ): void {
-    this.animationConfigs.set(key, {
-      key,
-      texture,
-      startFrame,
-      endFrame,
-      frameRate,
-      repeat,
-      yoyo
+    const originalY = sprite.y;
+    
+    const floatTween = this.scene.tweens.add({
+      targets: sprite,
+      y: originalY - amplitude,
+      duration: duration,
+      ease: 'Sine.easeInOut',
+      yoyo: true,
+      repeat: -1
+    });
+
+    this.activeAnimations.set(`floating-${sprite.name || 'sprite'}`, [floatTween]);
+  }
+
+  /**
+   * Stop floating animation
+   */
+  public stopFloating(sprite: Phaser.GameObjects.Sprite): void {
+    this.clearAnimations(`floating-${sprite.name || 'sprite'}`);
+  }
+
+  /**
+   * Clear specific animations
+   */
+  private clearAnimations(key: string): void {
+    const tweens = this.activeAnimations.get(key);
+    if (tweens) {
+      tweens.forEach(tween => {
+        if (tween && tween.isActive()) {
+          tween.stop();
+        }
+      });
+      this.activeAnimations.delete(key);
+    }
+  }
+
+  /**
+   * Clear all active animations
+   */
+  public clearAllAnimations(): void {
+    this.activeAnimations.forEach((_tweens, key) => {
+      this.clearAnimations(key);
     });
   }
 
-  public loadSpritesheet(key: string, path: string, frameWidth: number, frameHeight: number): void {
-    if (!this.loadedSpritesheets.has(key)) {
-      this.scene.load.spritesheet(key, path, { frameWidth, frameHeight });
-      this.loadedSpritesheets.add(key);
-    }
+  /**
+   * Set mobile mode for performance optimization
+   */
+  public setMobileMode(isMobile: boolean): void {
+    this.isMobile = isMobile;
   }
 
-  public createCharacterAnimations(): void {
-    // Create all character animations from configs
-    const characterClasses = ['warrior', 'mage', 'rogue', 'healer'];
-    
-    characterClasses.forEach(characterClass => {
-      const animations = ['idle', 'run', 'attack', 'special'];
-      animations.forEach(animType => {
-        const key = `${characterClass}_${animType}`;
-        this.createAnimationFromConfig(key);
+  /**
+   * Create smooth exit animation for scene elements
+   */
+  public animateSceneExit(
+    elements: Phaser.GameObjects.GameObject[],
+    config?: Partial<EntranceConfig>
+  ): Promise<void> {
+    const finalConfig: EntranceConfig = {
+      duration: this.isMobile ? 400 : 600,
+      ease: 'Power2.easeIn',
+      delay: 0,
+      fromAlpha: 1,
+      fromScale: 1,
+      ...config
+    };
+
+    return new Promise((resolve) => {
+      const tweens: Phaser.Tweens.Tween[] = [];
+      let completedCount = 0;
+
+      elements.forEach((element, index) => {
+        if ('setAlpha' in element && 'setScale' in element) {
+          const tween = this.scene.tweens.add({
+            targets: element,
+            alpha: 0,
+            scaleX: 0.8,
+            scaleY: 0.8,
+            y: (element as any).y + 20, // Slide down slightly
+            duration: finalConfig.duration,
+            ease: finalConfig.ease,
+            delay: index * 50, // Stagger exit animations
+            onComplete: () => {
+              completedCount++;
+              if (completedCount === elements.length) {
+                this.clearAnimations('scene-exit');
+                resolve();
+              }
+            }
+          });
+
+          tweens.push(tween);
+        }
       });
+
+      this.activeAnimations.set('scene-exit', tweens);
     });
   }
 
-  public createBossAnimations(): void {
-    // Create all boss animations from configs
-    const bossTypes = [
-      'boss_lag_spike', 'boss_algorithm', 'boss_influencer', 'boss_deadline',
-      'boss_spoiler', 'boss_referee', 'boss_cringe'
-    ];
-    
-    bossTypes.forEach(bossType => {
-      const animations = ['idle', 'hit', 'phase2', 'death'];
-      animations.forEach(animType => {
-        const key = `${bossType}_${animType}`;
-        this.createAnimationFromConfig(key);
-      });
-    });
-  }
+  /**
+   * Create satisfying button feedback animation
+   */
+  public animateButtonFeedback(
+    button: Phaser.GameObjects.Container,
+    type: 'press' | 'hover' | 'success' | 'error' = 'press'
+  ): Promise<void> {
+    return new Promise((resolve) => {
+      let tween: Phaser.Tweens.Tween;
 
-  private createAnimationFromConfig(configKey: string): void {
-    const config = this.animationConfigs.get(configKey);
-    if (!config) {
-      console.warn(`Animation config not found: ${configKey}`);
-      return;
-    }
+      switch (type) {
+        case 'press':
+          tween = this.scene.tweens.add({
+            targets: button,
+            scaleX: 0.95,
+            scaleY: 0.95,
+            duration: 100,
+            ease: 'Power2.out',
+            yoyo: true,
+            onComplete: () => resolve()
+          });
+          break;
 
-    this.createAnimation(
-      config.key,
-      config.texture,
-      config.startFrame,
-      config.endFrame,
-      config.frameRate,
-      config.repeat,
-      config.yoyo
-    );
-  }
+        case 'hover':
+          tween = this.scene.tweens.add({
+            targets: button,
+            scaleX: 1.05,
+            scaleY: 1.05,
+            duration: 200,
+            ease: 'Power2.out',
+            onComplete: () => resolve()
+          });
+          break;
 
-  private createAnimation(
-    key: string, 
-    texture: string, 
-    startFrame: number, 
-    endFrame: number, 
-    frameRate: number,
-    repeat: number = -1,
-    yoyo: boolean = false
-  ): void {
-    if (!this.scene.anims.exists(key)) {
-      this.scene.anims.create({
-        key,
-        frames: this.scene.anims.generateFrameNumbers(texture, {
-          start: startFrame,
-          end: endFrame
-        }),
-        frameRate,
-        repeat,
-        yoyo
-      });
-    }
-  }
+        case 'success':
+          tween = this.scene.tweens.add({
+            targets: button,
+            scaleX: 1.2,
+            scaleY: 1.2,
+            duration: 150,
+            ease: 'Back.out',
+            yoyo: true,
+            onComplete: () => resolve()
+          });
+          break;
 
-  public initializeSpriteState(sprite: Phaser.GameObjects.Sprite): void {
-    if (!this.spriteStates.has(sprite)) {
-      this.spriteStates.set(sprite, {
-        currentAnimation: null,
-        queuedAnimations: [],
-        isPlaying: false,
-        canInterrupt: true
-      });
-
-      // Listen for animation events
-      sprite.on('animationcomplete', (animation: Phaser.Animations.Animation) => {
-        this.onAnimationComplete(sprite, animation.key);
-      });
-    }
-  }
-
-  public playAnimation(
-    sprite: Phaser.GameObjects.Sprite, 
-    animationKey: string, 
-    canInterrupt: boolean = true,
-    queue: boolean = false
-  ): boolean {
-    if (!sprite || !this.scene.anims.exists(animationKey)) {
-      console.warn(`Animation not found or sprite invalid: ${animationKey}`);
-      return false;
-    }
-
-    this.initializeSpriteState(sprite);
-    const state = this.spriteStates.get(sprite)!;
-
-    // If queuing is requested, add to queue
-    if (queue && state.isPlaying && !state.canInterrupt) {
-      state.queuedAnimations.push(animationKey);
-      return true;
-    }
-
-    // Check if we can interrupt current animation
-    if (state.isPlaying && !state.canInterrupt && !canInterrupt) {
-      return false;
-    }
-
-    // Play the animation
-    sprite.play(animationKey);
-    state.currentAnimation = animationKey;
-    state.isPlaying = true;
-    state.canInterrupt = canInterrupt;
-
-    return true;
-  }
-
-  public queueAnimation(sprite: Phaser.GameObjects.Sprite, animationKey: string): void {
-    this.initializeSpriteState(sprite);
-    const state = this.spriteStates.get(sprite)!;
-    
-    if (!state.isPlaying) {
-      // If not playing anything, play immediately
-      this.playAnimation(sprite, animationKey);
-    } else {
-      // Add to queue
-      state.queuedAnimations.push(animationKey);
-    }
-  }
-
-  public stopAnimation(sprite: Phaser.GameObjects.Sprite, clearQueue: boolean = false): void {
-    if (!sprite) return;
-
-    sprite.stop();
-    
-    const state = this.spriteStates.get(sprite);
-    if (state) {
-      state.currentAnimation = null;
-      state.isPlaying = false;
-      state.canInterrupt = true;
-      
-      if (clearQueue) {
-        state.queuedAnimations = [];
+        case 'error':
+          // Shake animation for errors
+          const originalX = button.x;
+          tween = this.scene.tweens.add({
+            targets: button,
+            x: originalX + 5,
+            duration: 50,
+            ease: 'Power2.out',
+            yoyo: true,
+            repeat: 3,
+            onComplete: () => {
+              button.setX(originalX);
+              resolve();
+            }
+          });
+          break;
       }
-    }
-  }
 
-  public isAnimationPlaying(sprite: Phaser.GameObjects.Sprite, animationKey?: string): boolean {
-    const state = this.spriteStates.get(sprite);
-    if (!state) return false;
-
-    if (animationKey) {
-      return state.isPlaying && state.currentAnimation === animationKey;
-    }
-    
-    return state.isPlaying;
-  }
-
-  public getCurrentAnimation(sprite: Phaser.GameObjects.Sprite): string | null {
-    const state = this.spriteStates.get(sprite);
-    return state ? state.currentAnimation : null;
-  }
-
-  public clearAnimationQueue(sprite: Phaser.GameObjects.Sprite): void {
-    const state = this.spriteStates.get(sprite);
-    if (state) {
-      state.queuedAnimations = [];
-    }
-  }
-
-  private onAnimationComplete(sprite: Phaser.GameObjects.Sprite, animationKey: string): void {
-    const state = this.spriteStates.get(sprite);
-    if (!state) return;
-
-    state.isPlaying = false;
-    state.currentAnimation = null;
-    state.canInterrupt = true;
-
-    // Play next queued animation if any
-    if (state.queuedAnimations.length > 0) {
-      const nextAnimation = state.queuedAnimations.shift()!;
-      this.playAnimation(sprite, nextAnimation);
-    }
-  }
-
-  public createPlaceholderSprites(): void {
-    // Create placeholder textures for development/testing
-    const graphics = this.scene.add.graphics();
-
-    // Character placeholders (32x32)
-    const characterClasses = ['warrior', 'mage', 'rogue', 'healer'];
-    const characterColors = [0xff0000, 0x0000ff, 0x00ff00, 0xffff00]; // Red, Blue, Green, Yellow
-
-    characterClasses.forEach((className, index) => {
-      graphics.clear();
-      graphics.fillStyle(characterColors[index]);
-      graphics.fillRect(0, 0, GameConstants.CHARACTER_SPRITE_SIZE, GameConstants.CHARACTER_SPRITE_SIZE);
-      graphics.lineStyle(2, 0xffffff);
-      graphics.strokeRect(0, 0, GameConstants.CHARACTER_SPRITE_SIZE, GameConstants.CHARACTER_SPRITE_SIZE);
-      
-      // Generate texture with multiple frames for animation
-      const frameCount = 16; // Enough frames for all animations
-      const spriteWidth = GameConstants.CHARACTER_SPRITE_SIZE * frameCount;
-      graphics.generateTexture(className, spriteWidth, GameConstants.CHARACTER_SPRITE_SIZE);
+      this.activeAnimations.set('button-feedback', [tween]);
     });
-
-    // Boss placeholders (128x128)
-    const bossTypes = [
-      'boss_lag_spike', 'boss_algorithm', 'boss_influencer', 'boss_deadline',
-      'boss_spoiler', 'boss_referee', 'boss_cringe'
-    ];
-    const bossColors = [0x800080, 0x008080, 0xff8000, 0x808000, 0x800000, 0x000080, 0x808080];
-
-    bossTypes.forEach((bossName, index) => {
-      graphics.clear();
-      graphics.fillStyle(bossColors[index]);
-      graphics.fillRect(0, 0, GameConstants.BOSS_SPRITE_SIZE, GameConstants.BOSS_SPRITE_SIZE);
-      graphics.lineStyle(4, 0xffffff);
-      graphics.strokeRect(0, 0, GameConstants.BOSS_SPRITE_SIZE, GameConstants.BOSS_SPRITE_SIZE);
-      
-      // Add boss identifier text
-      const bossNumber = index + 1;
-      graphics.fillStyle(0xffffff);
-      graphics.fillCircle(GameConstants.BOSS_SPRITE_SIZE / 2, GameConstants.BOSS_SPRITE_SIZE / 2, 20);
-      
-      // Generate texture with multiple frames for animation
-      const frameCount = 16; // Enough frames for all animations
-      const spriteWidth = GameConstants.BOSS_SPRITE_SIZE * frameCount;
-      graphics.generateTexture(bossName, spriteWidth, GameConstants.BOSS_SPRITE_SIZE);
-    });
-
-    graphics.destroy();
   }
 
-  public cleanup(): void {
-    // Clean up sprite states
-    this.spriteStates.clear();
-    this.loadedSpritesheets.clear();
+  /**
+   * Create smooth fade transition for text changes
+   */
+  public animateTextChange(
+    textObject: Phaser.GameObjects.Text,
+    newText: string,
+    duration: number = 300
+  ): Promise<void> {
+    return new Promise((resolve) => {
+      // Fade out
+      this.scene.tweens.add({
+        targets: textObject,
+        alpha: 0,
+        duration: duration / 2,
+        ease: 'Power2.easeIn',
+        onComplete: () => {
+          // Change text
+          textObject.setText(newText);
+          
+          // Fade in
+          this.scene.tweens.add({
+            targets: textObject,
+            alpha: 1,
+            duration: duration / 2,
+            ease: 'Power2.easeOut',
+            onComplete: () => resolve()
+          });
+        }
+      });
+    });
+  }
+
+  /**
+   * Destroy the animation system
+   */
+  public destroy(): void {
+    this.clearAllAnimations();
   }
 }

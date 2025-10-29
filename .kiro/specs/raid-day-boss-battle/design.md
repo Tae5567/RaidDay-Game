@@ -2,7 +2,7 @@
 
 ## Overview
 
-Raid Day is a 2D pixel art boss battle game built with Phaser.js 3.70+ and integrated with Reddit's Devvit platform. The game features real-time collaborative combat where players attack daily rotating bosses through an energy-based system, with rich animations and community participation mechanics. The architecture follows a client-server model with Phaser handling all visual elements and animations while the server manages game state, boss data, and player progression.
+Raid Day is a collaborative boss battle game built with Phaser.js 3.70+ for Reddit's Devvit platform. Players participate in quick 2-minute sessions attacking a singlew daily boss with shared community HP (50,000). The game emphasizes satisfying attack animations, real-time community participation, and automatic Reddit integration. The architecture focuses on simplicity: fast attack loops, shared boss HP, and immediate visual feedback.
 
 ## Architecture
 
@@ -35,51 +35,79 @@ Raid Day is a 2D pixel art boss battle game built with Phaser.js 3.70+ and integ
 
 ### Core Game Scenes
 
-#### 1. BattleScene (Primary Scene)
+#### 1. SplashScene (Entry Point)
 ```typescript
-class BattleScene extends Phaser.Scene {
-  // Core entities
+class SplashScene extends Phaser.Scene {
   private boss: BossEntity;
-  private playerCharacter: PlayerCharacter;
-  private communityPlayers: PlayerCharacter[];
+  private bossHPBar: HPBar;
+  private fighterCount: Text;
+  private fightButton: ActionButton;
   
-  // Systems
-  private combatSystem: CombatSystem;
-  private energySystem: EnergySystem;
-  private animationSystem: AnimationSystem;
-  private particleSystem: ParticleSystem;
-  private uiSystem: UISystem;
-  
-  // Game state
-  private gameState: BattleState;
-  private communityDPS: CommunityDPSTracker;
+  // Display current boss with HP and active fighter count
+  // Big "FIGHT NOW" button to enter battle
 }
 ```
 
-**Layout Design (800x600 canvas):**
+**Splash Layout (800x600 canvas):**
 ```
 ┌─────────────────────────────────────────┐
-│  Boss HP: ▓▓▓▓▓▓░░░░ 64,240/80,000     │ ← Top HUD
-│  The Lag Spike • Level 45               │
-├─────────────────────────────────────────┤
+│           THE LAG SPIKE                 │ ← Boss Name
+│      [BOSS SPRITE - 128x128]            │ ← Animated Boss
 │                                         │
-│         [BOSS SPRITE - 128x128]         │ ← Main Battle Area
-│            (animated idle)              │   (400px height)
+│  HP: ▓▓▓▓▓▓▓▓░░ 87,432 / 50,000       │ ← Shared HP Bar
 │                                         │
-│    [P1] [P2] [P3] [P4]  ← Community     │
-│         [YOUR CHAR]     ← Player        │
+│        347 Fighters Active              │ ← Community Count
 │                                         │
-├─────────────────────────────────────────┤
-│  Energy: ●●●●○ (4/5)                   │ ← Bottom HUD
-│  [ATTACK] [SPECIAL: READY]              │   (100px height)
+│         [FIGHT NOW!]                    │ ← Big Button
 └─────────────────────────────────────────┘
 ```
 
-#### 2. Supporting Scenes
-- **BootScene**: Asset loading and initialization
-- **SplashScene**: Main menu with boss preview
-- **ClassSelectScene**: Character class selection
-- **VictoryScene**: Boss defeat celebration and rewards
+#### 2. BattleScene (Core Gameplay)
+```typescript
+class BattleScene extends Phaser.Scene {
+  private boss: BossEntity;
+  private playerCharacter: PlayerCharacter;
+  private attackButton: ActionButton;
+  private sessionTimer: SessionTimer;
+  private damageTracker: SessionDamageTracker;
+  
+  // 2-minute session with 5-10 attacks
+  // Focus on attack animation loop
+}
+```
+
+**Battle Layout:**
+```
+┌─────────────────────────────────────────┐
+│  HP: ▓▓▓▓▓▓▓▓░░ 87,432 / 50,000       │ ← Boss HP
+├─────────────────────────────────────────┤
+│                                         │
+│         [BOSS SPRITE]                   │ ← Boss (center)
+│                                         │
+│           [YOUR CHAR]                   │ ← Player (bottom)
+│                                         │
+├─────────────────────────────────────────┤
+│  Session: 5 attacks left               │ ← Session Info
+│  Your damage: 1,247                    │
+│         [ATTACK]                        │ ← Attack Button
+└─────────────────────────────────────────┘
+```
+
+#### 3. ResultsScene (Session Summary)
+```typescript
+class ResultsScene extends Phaser.Scene {
+  private sessionSummary: SessionSummary;
+  private leaderboardRank: RankDisplay;
+  private shareButton: ActionButton;
+  private fightAgainButton: ActionButton;
+  
+  // Show session results and sharing options
+}
+```
+
+#### 4. Supporting Scenes
+- **BootScene**: Asset loading and initialization  
+- **VictoryScene**: Boss defeat celebration and Reddit post creation
 
 ### Entity System
 
@@ -145,70 +173,62 @@ class PlayerCharacter extends Phaser.GameObjects.Sprite {
 
 ### Combat System
 
-#### Energy Management
+#### Session Management
 ```typescript
-interface EnergyState {
-  current: number;        // 0-5 energy points
-  max: number;           // Always 5
-  cooldowns: number[];   // Per-point cooldown timers (30s each)
-  lastRefresh: number;   // Server-side 2-hour gate
-  sessionStart: number;  // Track session duration
+interface SessionState {
+  timeRemaining: number;    // 120 seconds (2 minutes)
+  attacksUsed: number;      // Track attacks in session
+  sessionDamage: number;    // Total damage this session
+  canAttack: boolean;       // Simple attack availability
 }
 
-class EnergySystem {
-  private energyState: EnergyState;
+class SessionSystem {
+  private sessionState: SessionState;
   
+  public startSession(): void;
   public canAttack(): boolean;
-  public consumeEnergy(): boolean;
-  public getNextRefreshTime(): number;
-  public updateCooldowns(deltaTime: number): void;
+  public recordAttack(damage: number): void;
+  public getTimeRemaining(): number;
+  public endSession(): SessionSummary;
 }
 ```
 
-#### Attack Sequence Timeline
+#### Attack Sequence Timeline (Simplified)
 ```typescript
 interface AttackSequence {
   phases: [
-    { action: 'run_forward', duration: 300 },
-    { action: 'attack_animation', duration: 200 },
-    { action: 'spawn_particles', duration: 100 },
-    { action: 'damage_number', duration: 400 },
-    { action: 'boss_hit_reaction', duration: 200 },
-    { action: 'run_back', duration: 300 }
+    { action: 'run_forward', duration: 300 },    // 0.3s
+    { action: 'attack_slash', duration: 200 },   // 0.2s  
+    { action: 'damage_popup', duration: 100 },   // 0.1s
+    { action: 'boss_flash', duration: 100 },     // 0.1s
+    { action: 'run_back', duration: 300 }        // 0.3s
   ];
-  totalDuration: 1500; // 1.5 seconds total
+  totalDuration: 800; // 0.8 seconds total
 }
 ```
 
-#### Damage Calculation
+#### Damage Calculation (Simplified)
 ```typescript
 function calculateDamage(
   playerClass: CharacterClass,
-  playerLevel: number,
-  energyRemaining: number,
-  bossPhase: number,
-  isCritical: boolean = false
+  playerLevel: number
 ): number {
-  const baseDamage = getClassBaseDamage(playerClass);
-  let damage = baseDamage * (1 + playerLevel * 0.05);
+  // Base damage ranges by class (minimal differences)
+  const baseDamageRanges = {
+    warrior: [180, 220],
+    mage: [170, 230], 
+    rogue: [160, 240],
+    healer: [175, 225]
+  };
   
-  // Full energy bonus (first attack)
-  if (energyRemaining === 5) {
-    damage *= 1.2;
-  }
+  const [min, max] = baseDamageRanges[playerClass];
+  let damage = Phaser.Math.Between(min, max);
   
-  // Boss phase resistance
-  if (bossPhase === 2) {
-    damage *= 0.9;
-  }
+  // Simple level scaling
+  damage *= (1 + playerLevel * 0.02);
   
-  // Critical hit (Rogue specialty: 30% chance)
-  if (isCritical) {
-    damage *= 3;
-  }
-  
-  // RNG variance ±10%
-  damage *= Phaser.Math.FloatBetween(0.9, 1.1);
+  // Random variance ±15%
+  damage *= Phaser.Math.FloatBetween(0.85, 1.15);
   
   return Math.floor(damage);
 }
@@ -251,23 +271,48 @@ class ParticleSystem {
 
 ### Real-Time Community System
 
-#### Community DPS Tracking
+#### Live Activity Feed
 ```typescript
-interface CommunityStats {
-  attacksPerMinute: number;
-  averageDamage: number;
-  activePlayers: number;
-  topDamageDealer: string;
-  recentAttacks: AttackEvent[];
+interface RecentAttack {
+  username: string;
+  damage: number;
+  timestamp: number;
+  timeAgo: string; // "5s ago"
 }
 
-class CommunityDPSTracker {
-  private stats: CommunityStats;
-  private simulationTimer: Phaser.Time.TimerEvent;
+interface CommunityStats {
+  activeFighters: number;        // "347 Fighters Active"
+  bossHP: number;               // Current shared HP
+  recentAttacks: RecentAttack[]; // Last 10 attacks
+  leaderboard: LeaderboardEntry[]; // Top 10 players
+}
+
+class LiveActivityFeed {
+  private recentAttacks: RecentAttack[];
+  private updateTimer: Phaser.Time.TimerEvent;
   
-  public simulateAttack(): void; // Visual simulation every 3-5s
-  public syncRealHP(): Promise<void>; // Server sync every 10s
-  public updateActivityFeed(attack: AttackEvent): void;
+  public addAttack(attack: RecentAttack): void;
+  public updateFeed(): void; // Every 5 seconds
+  public displayTicker(): void; // Scrolling bottom ticker
+}
+```
+
+#### Live Leaderboard
+```typescript
+interface LeaderboardEntry {
+  rank: number;
+  username: string;
+  totalDamage: number;
+  isCurrentPlayer: boolean;
+}
+
+class LiveLeaderboard {
+  private entries: LeaderboardEntry[];
+  private updateTimer: Phaser.Time.TimerEvent;
+  
+  public updateLeaderboard(): Promise<void>; // Every 10 seconds
+  public showTop10(): void;
+  public highlightPlayerRank(username: string): void;
 }
 ```
 
@@ -306,56 +351,98 @@ class ActionButton extends Phaser.GameObjects.Container {
 
 ## Data Models
 
+### Redis Data Structure (Simple)
+```typescript
+// Current boss state
+interface BossState {
+  hp: number;           // 87432 (current HP)
+  maxHP: number;        // 50000 (always 50k)
+  name: string;         // "The Lag Spike"
+  defeatedAt: number | null; // timestamp or null
+}
+
+// Player data
+interface PlayerData {
+  userId: string;
+  class: CharacterClass;
+  level: number;
+  totalDamage: number;
+  lastSession: number; // timestamp
+}
+
+// Recent attacks feed (list, max 100)
+interface AttackEvent {
+  username: string;
+  damage: number;
+  timestamp: number;
+}
+
+// Daily leaderboard (sorted set by damage)
+// Key: leaderboard:daily
+// Value: userId -> totalDamage
+```
+
 ### Boss Rotation System
 ```typescript
-interface DailyBoss {
-  monday: BossData;    // "The Lag Spike" (Gaming theme)
-  tuesday: BossData;   // "The Algorithm" (Internet theme)
-  wednesday: BossData; // "The Influencer" (Social Media theme)
-  thursday: BossData;  // "The Deadline" (Work theme)
-  friday: BossData;    // "The Spoiler" (Entertainment theme)
-  saturday: BossData;  // "The Referee" (Sports theme)
-  sunday: BossData;    // "The Cringe" (Memes theme)
-}
+const DAILY_BOSSES = {
+  0: { name: "The Cringe", theme: "memes", sprite: "boss_cringe.png" },      // Sunday
+  1: { name: "The Lag Spike", theme: "gaming", sprite: "boss_lag_spike.png" },  // Monday  
+  2: { name: "The Algorithm", theme: "internet", sprite: "boss_algorithm.png" }, // Tuesday
+  3: { name: "The Influencer", theme: "social", sprite: "boss_influencer.png" },  // Wednesday
+  4: { name: "The Deadline", theme: "work", sprite: "boss_deadline.png" },      // Thursday
+  5: { name: "The Spoiler", theme: "entertainment", sprite: "boss_spoiler.png" }, // Friday
+  6: { name: "The Referee", theme: "sports", sprite: "boss_referee.png" }     // Saturday
+};
 
 function getCurrentBoss(): BossData {
   const dayOfWeek = new Date().getDay();
-  return DAILY_BOSSES[Object.keys(DAILY_BOSSES)[dayOfWeek]];
+  return DAILY_BOSSES[dayOfWeek];
 }
 ```
 
-### Player Progression
+### Asset Configuration
 ```typescript
-interface PlayerData {
-  userId: string;
-  characterClass: CharacterClass;
-  level: number;
-  experience: number;
-  sessionDamage: number;
-  totalDamage: number;
-  lastEnergyRefresh: number;
-  energyState: EnergyState;
-  specialAbilityUsed: boolean;
-}
+// Available backgrounds
+const BACKGROUNDS = {
+  main: "backgrounds/background.png",
+  arena: "backgrounds/castle_arena.png", 
+  mountains: "backgrounds/Mountains Background.png"
+};
+
+// Character class sprites
+const CHARACTER_SPRITES = {
+  warrior: "sprites/warrior.png",
+  mage: "sprites/mage.png",
+  rogue: "sprites/rogue.png",
+  healer: "sprites/healer.png"
+};
+
+// Boss sprites (all available)
+const BOSS_SPRITES = {
+  boss_cringe: "sprites/boss_cringe.png",
+  boss_lag_spike: "sprites/boss_lag_spike.png",
+  boss_algorithm: "sprites/boss_algorithm.png",
+  boss_influencer: "sprites/boss_influencer.png",
+  boss_deadline: "sprites/boss_deadline.png",
+  boss_spoiler: "sprites/boss_spoiler.png",
+  boss_referee: "sprites/boss_referee.png"
+};
 ```
 
-### Server API Endpoints
+### Server API Endpoints (Simplified)
 ```typescript
-// Combat endpoints
-POST /api/attack
-POST /api/special-ability
-GET  /api/boss-status
-GET  /api/player-stats
+// Core gameplay
+POST /api/attack          // Process attack, return damage & new HP
+GET  /api/gameState       // Boss HP, your stats, leaderboard
+POST /api/shareSession    // Create Reddit comment
 
-// Community endpoints  
-GET  /api/community-dps
-GET  /api/leaderboard
-GET  /api/activity-feed
+// Real-time data  
+GET  /api/recentAttacks   // Last 10 attacks for activity feed
+GET  /api/leaderboard     // Top 10 + your rank
 
-// Game state endpoints
-GET  /api/current-boss
-POST /api/select-class
-GET  /api/player-energy
+// Boss management
+POST /api/defeatBoss      // Handle victory, create Reddit post
+GET  /api/nextBoss        // Preview tomorrow's boss
 ```
 
 ## Error Handling
@@ -427,20 +514,53 @@ function validateBossHP(reportedHP: number): number {
 2. **UI Responsiveness**: Layout adaptation, button feedback
 3. **Accessibility**: Color contrast, text readability, touch targets
 
+## Reddit Integration Strategy
+
+### Victory Post Creation
+```typescript
+interface VictoryPost {
+  title: string; // "🎉 r/RaidDay defeated The Lag Spike!"
+  content: string; // Victory message with stats
+  topPlayers: string[]; // Tag top 3 contributors
+  leaderboard: LeaderboardEntry[]; // Full leaderboard in comments
+}
+
+function createVictoryPost(bossName: string, stats: BossStats): void {
+  // Auto-create post when boss HP reaches 0
+  // Tag top contributors in post
+  // Add full leaderboard as comment
+}
+```
+
+### Session Sharing
+```typescript
+interface SessionShare {
+  damage: number;
+  characterClass: string;
+  rank: number;
+  bossName: string;
+}
+
+function shareSession(sessionData: SessionShare): string {
+  return `I dealt ${sessionData.damage} damage as a ${sessionData.characterClass}! ⚔️ 
+  Current rank: #${sessionData.rank} vs ${sessionData.bossName}`;
+}
+```
+
 ## Mobile Optimization Strategy
 
 ### Responsive Design
-- **Portrait Mode**: Vertical UI stack, larger touch targets
-- **Landscape Mode**: Horizontal layout, optimized for thumbs
-- **Dynamic Scaling**: Maintain 800x600 aspect ratio, scale to fit
+- **Single Layout**: Focus on portrait mode for mobile Reddit users
+- **Large Buttons**: Attack button minimum 60x60 pixels for easy tapping
+- **Dynamic Scaling**: Scale 800x600 canvas to fit screen, maintain aspect ratio
 
-### Performance Optimizations
-- **Particle Limits**: 20 particles max on mobile (vs 50 desktop)
-- **Sprite Batching**: Group similar sprites for efficient rendering
-- **Object Pooling**: Reuse damage numbers, particles, UI elements
-- **Texture Compression**: Optimize sprite sheets for mobile GPUs
+### Performance Optimizations  
+- **Simple Particles**: Limit to 10 particles max on mobile
+- **Efficient Animations**: Use tweens instead of complex sprite animations
+- **Object Pooling**: Reuse damage numbers and UI elements
+- **Minimal Effects**: Reduce screen shake and flash effects on low-end devices
 
 ### Touch Controls
-- **Gesture Support**: Tap (attack), hold (special), swipe (UI navigation)
-- **Haptic Feedback**: Visual indicators for touch responses
-- **Minimum Target Size**: 44x44 pixels for accessibility compliance
+- **Tap to Attack**: Single tap for attack, no complex gestures needed
+- **Visual Feedback**: Button press animations and immediate response
+- **Accessibility**: High contrast damage numbers, clear UI elements

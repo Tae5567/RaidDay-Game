@@ -4,3 +4,4 @@ export { DamageNumber, DamageNumberPool, type DamageNumberConfig } from './Damag
 export { StatusMessage, StatusMessageQueue, StatusMessageType, type StatusMessageConfig } from './StatusMessage';
 export { LiveActivityFeed } from './LiveActivityFeed';
 export { LiveLeaderboard } from './LiveLeaderboard';
+export { LoadingIndicator, type LoadingConfig, LOADING_TIPS, getRandomTip } from './LoadingIndicator';

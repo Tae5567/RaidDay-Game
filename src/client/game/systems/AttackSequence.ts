@@ -2,7 +2,6 @@ import { Scene } from 'phaser';
 import { PlayerCharacter } from '../entities/PlayerCharacter';
 import { BossEntity } from '../entities/BossEntity';
 import { ParticleSystem } from './ParticleSystem';
-import { GameConstants } from '../utils/GameConstants';
 
 /**
  * AttackSequence - Manages the 1.5-second attack animation timeline
@@ -22,14 +21,11 @@ export class AttackSequence {
   private isPlaying: boolean = false;
   private screenShakeEnabled: boolean = true;
 
-  // Animation phases with timings (total: 1500ms)
+  // Animation phases with timings (total: 800ms per requirements 1.2, 1.3, 7.1, 7.2)
   private readonly PHASE_TIMINGS = {
     RUN_FORWARD: 300,    // 0-300ms: Character runs toward boss
-    ATTACK: 200,         // 300-500ms: Attack animation plays
-    PARTICLES: 100,      // 500-600ms: Particle effects spawn
-    DAMAGE_DISPLAY: 400, // 600-1000ms: Damage numbers and hit reaction
-    HIT_PAUSE: 100,      // 1000-1100ms: Brief pause for impact
-    RUN_BACK: 400        // 1100-1500ms: Character returns to position
+    ATTACK: 200,         // 300-500ms: Attack animation and damage popup
+    RUN_BACK: 300        // 500-800ms: Character returns to position
   };
 
   constructor(scene: Scene, particleSystem?: ParticleSystem) {
@@ -68,19 +64,10 @@ export class AttackSequence {
     // Phase 1: Run forward (0-300ms)
     await this.runForward(attacker, attackX, attackY);
     
-    // Phase 2: Attack animation (300-500ms)
-    await this.playAttackAnimation(attacker, isSpecial);
+    // Phase 2: Attack animation with immediate effects (300-500ms)
+    await this.playAttackWithEffects(attacker, target, damage, isCritical, isSpecial);
     
-    // Phase 3: Particles and effects (500-600ms)
-    await this.spawnParticles(target, isCritical, isSpecial);
-    
-    // Phase 4: Damage display and hit reaction (600-1000ms)
-    await this.showDamageAndHitReaction(target, damage, isCritical, isSpecial);
-    
-    // Phase 5: Hit pause for impact (1000-1100ms)
-    await this.hitPause(isCritical);
-    
-    // Phase 6: Run back to original position (1100-1500ms)
+    // Phase 3: Run back to original position (500-800ms)
     await this.runBack(attacker, originalX, originalY);
   }
 
@@ -104,7 +91,13 @@ export class AttackSequence {
     });
   }
 
-  private playAttackAnimation(attacker: PlayerCharacter, isSpecial?: boolean): Promise<void> {
+  private playAttackWithEffects(
+    attacker: PlayerCharacter, 
+    target: BossEntity, 
+    damage: number, 
+    isCritical: boolean, 
+    isSpecial?: boolean
+  ): Promise<void> {
     return new Promise((resolve) => {
       // Play appropriate attack animation
       const animationKey = isSpecial ? 'special' : 'attack';
@@ -119,78 +112,56 @@ export class AttackSequence {
         ease: 'Power2.InOut'
       });
 
-      // Wait for attack animation duration
+      // Trigger all effects at 100ms into attack (when hit connects)
+      this.scene.time.delayedCall(100, () => {
+        // Spawn particles
+        this.spawnParticlesImmediate(target, isCritical, isSpecial);
+        
+        // Show damage and boss hit reaction
+        this.showDamageAndHitReactionImmediate(target, damage, isCritical, isSpecial);
+      });
+
+      // Wait for full attack duration
       this.scene.time.delayedCall(this.PHASE_TIMINGS.ATTACK, () => {
         resolve();
       });
     });
   }
 
-  private spawnParticles(target: BossEntity, isCritical: boolean, isSpecial?: boolean): Promise<void> {
-    return new Promise((resolve) => {
-      if (this.particleSystem) {
-        if (isSpecial) {
-          // Special abilities get enhanced particle effects
-          this.particleSystem.createCriticalBurst(target.x, target.y);
-          this.particleSystem.createSlashEffect(target.x, target.y);
-        } else if (isCritical) {
-          this.particleSystem.createCriticalBurst(target.x, target.y);
-        } else {
-          this.particleSystem.createSlashEffect(target.x, target.y);
-        }
+  private spawnParticlesImmediate(target: BossEntity, isCritical: boolean, isSpecial?: boolean): void {
+    if (this.particleSystem) {
+      if (isSpecial) {
+        // Special abilities get enhanced particle effects
+        this.particleSystem.createCriticalBurst(target.x, target.y);
+        this.particleSystem.createSlashEffect(target.x, target.y);
+      } else if (isCritical) {
+        this.particleSystem.createCriticalBurst(target.x, target.y);
+      } else {
+        this.particleSystem.createSlashEffect(target.x, target.y);
       }
-
-      this.scene.time.delayedCall(this.PHASE_TIMINGS.PARTICLES, () => {
-        resolve();
-      });
-    });
+    }
   }
 
-  private showDamageAndHitReaction(
+  private showDamageAndHitReactionImmediate(
     target: BossEntity, 
     damage: number, 
     isCritical: boolean, 
     isSpecial?: boolean
-  ): Promise<void> {
-    return new Promise((resolve) => {
-      // Show damage number
-      this.createDamageNumber(target, damage, isCritical, isSpecial);
+  ): void {
+    // Show damage number
+    this.createDamageNumber(target, damage, isCritical, isSpecial);
+    
+    // Boss hit reaction
+    this.playBossHitReaction(target, isCritical);
+    
+    // Screen shake (if enabled) - reduced duration for faster sequence
+    if (this.screenShakeEnabled) {
+      const shakeIntensity = isSpecial 
+        ? 8 // Boss phase shake
+        : (isCritical ? 5 : 2); // Critical or normal shake
       
-      // Boss hit reaction
-      this.playBossHitReaction(target, isCritical);
-      
-      // Screen shake (if enabled)
-      if (this.screenShakeEnabled) {
-        const shakeIntensity = isSpecial 
-          ? GameConstants.SHAKE_BOSS_PHASE 
-          : (isCritical ? GameConstants.SHAKE_CRITICAL : GameConstants.SHAKE_NORMAL);
-        
-        this.scene.cameras.main.shake(GameConstants.SCREEN_SHAKE_DURATION, shakeIntensity);
-      }
-
-      this.scene.time.delayedCall(this.PHASE_TIMINGS.DAMAGE_DISPLAY, () => {
-        resolve();
-      });
-    });
-  }
-
-  private hitPause(isCritical: boolean): Promise<void> {
-    return new Promise((resolve) => {
-      if (isCritical) {
-        // Freeze frame for critical hits
-        this.scene.physics.pause();
-        this.scene.anims.pauseAll();
-        
-        this.scene.time.delayedCall(GameConstants.HIT_PAUSE_DURATION, () => {
-          this.scene.physics.resume();
-          this.scene.anims.resumeAll();
-          resolve();
-        });
-      } else {
-        // No pause for normal hits
-        resolve();
-      }
-    });
+      this.scene.cameras.main.shake(150, shakeIntensity); // Shorter shake for 0.8s sequence
+    }
   }
 
   private runBack(attacker: PlayerCharacter, originalX: number, originalY: number): Promise<void> {
@@ -198,7 +169,7 @@ export class AttackSequence {
       // Play run animation
       attacker.playAnimation('run');
       
-      // Tween back to original position
+      // Tween back to original position (300ms for 0.8s total sequence)
       this.scene.tweens.add({
         targets: attacker,
         x: originalX,
@@ -312,10 +283,10 @@ export class AttackSequence {
   }
 
   /**
-   * Get the total duration of an attack sequence
+   * Get the total duration of an attack sequence (0.8 seconds)
    */
   public getTotalDuration(): number {
-    return Object.values(this.PHASE_TIMINGS).reduce((sum, time) => sum + time, 0);
+    return 800; // 0.8 seconds total (300ms + 200ms + 300ms)
   }
 
   /**
