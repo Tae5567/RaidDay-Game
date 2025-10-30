@@ -67,35 +67,25 @@ export class HowToPlay extends Scene {
       align: 'center',
     }).setOrigin(0.5);
 
-    // Simplified, readable instructions
+    // Concise, mobile-friendly instructions
     const instructions = this.add.text(0, 0,
-      'GOAL:\nDefeat the daily boss with other players!\n\n' +
-
-      'HOW TO PLAY:\n' +
-      '• Choose your character class\n' +
-      '• Attack the boss to deal damage\n' +
-      '• Your HP: 500 vs Boss HP: 50,000\n' +
-      '• Community works together!\n\n' +
-
-      'CLASSES:\n' +
-      '• WARRIOR: High damage, balanced\n' +
-      '• MAGE: Very high magic damage\n' +
-      '• ROGUE: 30% critical hit chance\n' +
-      '• HEALER: Support abilities\n\n' +
-
-      'TIPS:\n' +
-      '• Boss attacks back - watch your HP!\n' +
-      '• New boss every day at 8 AM\n' +
-      '• Check leaderboards for rankings',
+      '🎯 GOAL: Defeat the boss together!\n\n' +
+      '⚔️ Choose class → Attack boss\n' +
+      '❤️ Your HP: 500 | Boss HP: 50,000\n\n' +
+      '🏛️ CLASSES:\n' +
+      'Warrior: Balanced | Mage: High damage\n' +
+      'Rogue: Critical hits | Healer: Support\n\n' +
+      '⚠️ Boss fights back!\n' +
+      '🕐 New boss daily at 8 AM',
       {
         fontFamily: 'Arial Black',
-        fontSize: MobileUtils.isMobile() ? '18px' : '20px',
+        fontSize: MobileUtils.isMobile() ? '16px' : '18px',
         color: '#ffffff',
         stroke: '#000000',
-        strokeThickness: 3,
+        strokeThickness: 2,
         align: 'center',
-        lineSpacing: 8,
-        wordWrap: { width: MobileUtils.isMobile() ? 280 : 400 }
+        lineSpacing: 6,
+        wordWrap: { width: MobileUtils.isMobile() ? 260 : 350 }
       }
     ).setOrigin(0.5);
 
@@ -158,14 +148,14 @@ export class HowToPlay extends Scene {
       this.contentContainer.setPosition(width / 2, height / 2);
       this.contentContainer.setScale(scaleFactor);
 
-      // Layout content elements vertically with better spacing
+      // Layout content elements vertically with proper spacing for mobile
       const children = this.contentContainer.list as Phaser.GameObjects.Text[];
       if (children.length >= 2) {
         const title = children[0];
         const instructions = children[1];
         if (title && instructions) {
-          title.setPosition(0, -180); // Title
-          instructions.setPosition(0, 20);    // Instructions with more space
+          title.setPosition(0, MobileUtils.isMobile() ? -120 : -140); // Title higher up
+          instructions.setPosition(0, MobileUtils.isMobile() ? 10 : 20);    // Instructions with proper spacing
         }
       }
     }

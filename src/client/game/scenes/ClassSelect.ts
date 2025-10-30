@@ -111,52 +111,74 @@ export class ClassSelect extends Scene {
   ): Phaser.GameObjects.Container {
     const container = this.add.container(0, 0);
 
-    // Button dimensions
-    const buttonWidth = 180;
-    const buttonHeight = 120;
+    // Mobile-optimized button dimensions
+    const buttonWidth = MobileUtils.isMobile() ? 140 : 180;
+    const buttonHeight = MobileUtils.isMobile() ? 100 : 120;
 
-    // Button background
-    const background = this.add.rectangle(0, 0, buttonWidth, buttonHeight, color, 0.3)
+    // Button background with rounded corners effect
+    const background = this.add.rectangle(0, 0, buttonWidth, buttonHeight, color, 0.4)
       .setStrokeStyle(3, color);
 
-    // Class name
-    const nameText = this.add.text(0, -30, name, {
-      fontFamily: 'Arial Black',
-      fontSize: '20px',
-      color: '#ffffff',
+    // Class emoji/icon instead of just text
+    const classEmojis: Record<CharacterClass, string> = {
+      [CharacterClass.WARRIOR]: '⚔️',
+      [CharacterClass.MAGE]: '🔮',
+      [CharacterClass.ROGUE]: '🗡️',
+      [CharacterClass.HEALER]: '✨'
+    };
+
+    // Large emoji icon
+    const iconText = this.add.text(0, -25, classEmojis[characterClass], {
+      fontSize: MobileUtils.isMobile() ? '32px' : '36px',
     }).setOrigin(0.5);
 
-    // Class description
-    const descText = this.add.text(0, 10, description, {
+    // Class name - larger and more readable
+    const nameText = this.add.text(0, 5, name, {
+      fontFamily: 'Arial Black',
+      fontSize: MobileUtils.isMobile() ? '16px' : '18px',
+      color: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 2,
+    }).setOrigin(0.5);
+
+    // Simplified description - just key trait
+    const traits: Record<CharacterClass, string> = {
+      [CharacterClass.WARRIOR]: 'Balanced',
+      [CharacterClass.MAGE]: 'High Damage',
+      [CharacterClass.ROGUE]: 'Critical Hits',
+      [CharacterClass.HEALER]: 'Support'
+    };
+
+    const traitText = this.add.text(0, 25, traits[characterClass], {
       fontFamily: 'Arial',
-      fontSize: '12px',
+      fontSize: MobileUtils.isMobile() ? '12px' : '14px',
       color: '#cccccc',
-      align: 'center',
-      wordWrap: { width: buttonWidth - 20 }
+      stroke: '#000000',
+      strokeThickness: 1,
     }).setOrigin(0.5);
 
     // Selection indicator (initially hidden)
-    const selector = this.add.rectangle(0, 0, buttonWidth + 10, buttonHeight + 10)
+    const selector = this.add.rectangle(0, 0, buttonWidth + 8, buttonHeight + 8)
       .setStrokeStyle(4, 0xffffff)
       .setVisible(false);
 
-    container.add([selector, background, nameText, descText]);
+    container.add([selector, background, iconText, nameText, traitText]);
 
     // Make background interactive with clear feedback
     background.setInteractive({ useHandCursor: true })
       .on('pointerover', () => {
-        console.log('Hovering over class:', characterClass);
         if (this.selectedClass !== characterClass) {
-          background.setAlpha(0.6);
+          background.setAlpha(0.7);
+          container.setScale(1.05);
         }
       })
       .on('pointerout', () => {
         if (this.selectedClass !== characterClass) {
-          background.setAlpha(0.3);
+          background.setAlpha(0.4);
+          container.setScale(1);
         }
       })
       .on('pointerdown', () => {
-        console.log('Class button clicked:', characterClass);
         this.selectClass(characterClass);
       });
 

@@ -8,13 +8,12 @@ export const createPost = async () => {
 
   return await reddit.submitCustomPost({
     splash: {
-      // Splash screen customization
-      appDisplayName: 'raid-day-game',
-      backgroundUri: 'default-splash.png',
-      buttonLabel: 'Start Playing',
-      description: 'An exciting interactive experience',
-
-      heading: 'Welcome to the Game!',
+      // Raid Day splash screen customization
+      appDisplayName: 'Raid Day',
+      backgroundUri: 'castle_arena.png',
+      buttonLabel: 'Join Battle',
+      description: 'Unite with the community to defeat today\'s boss!',
+      heading: 'Raid Day',
       appIconUri: 'default-icon.png',
     },
     postData: {
@@ -22,6 +21,6 @@ export const createPost = async () => {
       score: 0,
     },
     subredditName: subredditName,
-    title: 'raid-day-game',
+    title: 'Raid Day - Community Boss Battle',
   });
 };

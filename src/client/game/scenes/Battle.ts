@@ -42,7 +42,7 @@ export class Battle extends Scene {
   private sessionDamage: number = 0;
   private sessionAttackCount: number = 0;
   private isAttacking: boolean = false;
-  private bossAttackTimer?: Phaser.Time.TimerEvent;
+  private bossAttackTimer?: Phaser.Time.TimerEvent | undefined;
 
   // UI elements
   private bossHPBar?: Phaser.GameObjects.Graphics;
@@ -113,7 +113,7 @@ export class Battle extends Scene {
     // Finally animate UI elements
     const uiElements: Phaser.GameObjects.GameObject[] = [];
     if (this.bossHPText) uiElements.push(this.bossHPText);
-    if (this.sessionInfoText) uiElements.push(this.sessionInfoText);
+    if (this.playerHPText) uiElements.push(this.playerHPText);
     if (this.attackButton) uiElements.push(this.attackButton);
     
     if (this.animationSystem && uiElements.length > 0) {
@@ -313,24 +313,24 @@ export class Battle extends Scene {
       strokeThickness: 2,
     }).setOrigin(0.5);
 
-    // Player HP bar at bottom
-    const playerHPBarY = height - 120;
-    const playerHPBarWidth = Math.min(width - 40, 300);
+    // Player HP bar repositioned to not cover player icon
+    const playerHPBarY = height - 160; // Moved higher to avoid covering player
+    const playerHPBarWidth = Math.min(width - 40, 250); // Slightly smaller
     
     // Player HP bar background
     const playerHPBarBg = this.add.graphics();
     playerHPBarBg.fillStyle(0x333333);
-    playerHPBarBg.fillRect(width / 2 - playerHPBarWidth / 2, playerHPBarY - 10, playerHPBarWidth, 20);
+    playerHPBarBg.fillRect(width / 2 - playerHPBarWidth / 2, playerHPBarY - 10, playerHPBarWidth, 16);
     playerHPBarBg.lineStyle(2, 0xffffff);
-    playerHPBarBg.strokeRect(width / 2 - playerHPBarWidth / 2, playerHPBarY - 10, playerHPBarWidth, 20);
+    playerHPBarBg.strokeRect(width / 2 - playerHPBarWidth / 2, playerHPBarY - 10, playerHPBarWidth, 16);
     
     // Player HP bar (will be updated)
     this.playerHPBar = this.add.graphics();
     
-    // Player HP text
-    this.playerHPText = this.add.text(width / 2, playerHPBarY + 20, `Your HP: ${this.playerCurrentHP} / ${this.playerMaxHP}`, {
+    // Player HP text - positioned above HP bar
+    this.playerHPText = this.add.text(width / 2, playerHPBarY - 25, `Your HP: ${this.playerCurrentHP} / ${this.playerMaxHP}`, {
       fontFamily: 'Arial',
-      fontSize: '14px',
+      fontSize: '12px',
       color: '#ffffff',
       stroke: '#000000',
       strokeThickness: 2,
@@ -345,13 +345,13 @@ export class Battle extends Scene {
   private createAttackButton(): void {
     const { width, height } = this.scale;
     
-    // Large, touch-friendly attack button (60x60 minimum for mobile)
-    const buttonWidth = MobileUtils.isMobile() ? 140 : 100;
-    const buttonHeight = MobileUtils.isMobile() ? 70 : 50;
+    // Large, touch-friendly attack button positioned to not cover player
+    const buttonWidth = MobileUtils.isMobile() ? 140 : 120;
+    const buttonHeight = MobileUtils.isMobile() ? 60 : 50;
     
     this.attackButton = new ActionButton(this, {
       x: width / 2,
-      y: height - 80, // More space from bottom for mobile
+      y: height - 50, // Positioned at very bottom to avoid covering player
       width: buttonWidth,
       height: buttonHeight,
       text: 'ATTACK',
@@ -361,8 +361,8 @@ export class Battle extends Scene {
     // Register with responsive layout system
     if (this.responsiveLayout) {
       this.responsiveLayout.registerElement('attackButton', this.attackButton, 
-        { x: '50%', y: height - 80 }, // Portrait
-        { x: '50%', y: height - 60 }  // Landscape
+        { x: '50%', y: height - 50 }, // Portrait - bottom edge
+        { x: '50%', y: height - 40 }  // Landscape - bottom edge
       );
     }
   }
@@ -422,13 +422,12 @@ export class Battle extends Scene {
     
     // Show damage number on player
     if (this.damageNumberPool && this.playerCharacter) {
-      this.damageNumberPool.showDamage(
-        this.playerCharacter.x,
-        this.playerCharacter.y - 30,
-        damage,
-        false, // Not critical
-        '#ff4444' // Red color for boss damage
-      );
+      this.damageNumberPool.showDamage({
+        x: this.playerCharacter.x,
+        y: this.playerCharacter.y - 30,
+        damage: damage,
+        isCritical: false
+      });
     }
     
     // Screen shake for boss attack
@@ -574,8 +573,8 @@ export class Battle extends Scene {
     // Clean up boss attack timer
     if (this.bossAttackTimer) {
       this.bossAttackTimer.destroy();
-      this.bossAttackTimer = undefined;
     }
+    this.bossAttackTimer = undefined;
   }
 
   override update(): void {
@@ -608,7 +607,7 @@ export class Battle extends Scene {
     // Update Player HP bar
     if (this.playerHPBar) {
       const hpPercentage = this.playerCurrentHP / this.playerMaxHP;
-      const hpBarWidth = Math.min(width - 40, 300);
+      const hpBarWidth = Math.min(width - 40, 250);
       const barWidth = hpBarWidth * hpPercentage;
       
       this.playerHPBar.clear();
@@ -619,7 +618,7 @@ export class Battle extends Scene {
       if (hpPercentage < 0.25) barColor = 0xff0000; // Red
       
       this.playerHPBar.fillStyle(barColor);
-      this.playerHPBar.fillRect(width / 2 - hpBarWidth / 2, height - 130, barWidth, 20);
+      this.playerHPBar.fillRect(width / 2 - hpBarWidth / 2, height - 170, barWidth, 16);
     }
     
     // Update Player HP text
