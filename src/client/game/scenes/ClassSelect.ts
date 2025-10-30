@@ -106,7 +106,7 @@ export class ClassSelect extends Scene {
   private createClassButton(
     characterClass: CharacterClass,
     name: string,
-    description: string,
+    _description: string,
     color: number
   ): Phaser.GameObjects.Container {
     const container = this.add.container(0, 0);

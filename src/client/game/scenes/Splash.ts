@@ -150,7 +150,7 @@ export class Splash extends Scene {
     }).setOrigin(0.5);
 
     // Add subtitle
-    this.subtitle = this.add.text(0, 0, 'Boss Battle Arena', {
+    this.subtitle = this.add.text(0, 0, 'Join the community boss battle!', {
       fontFamily: 'Arial',
       fontSize: '20px',
       color: '#cccccc',
@@ -308,29 +308,30 @@ export class Splash extends Scene {
   }
 
   private createPlayButton(): void {
-    const { width } = this.scale;
     
-    // Main play button
+    // Main play button - properly sized for mobile
     const playButtonContainer = this.add.container(0, 0);
-    const playButtonBg = this.add.rectangle(0, 0, 250, 80, GameConstants.COLORS.BUTTON_ENABLED)
-      .setStrokeStyle(4, GameConstants.COLORS.TEXT_PRIMARY);
-    const playButtonText = this.add.text(0, 0, 'SELECT CLASS', {
+    const buttonWidth = MobileUtils.isMobile() ? 200 : 250;
+    const buttonHeight = MobileUtils.isMobile() ? 60 : 70;
+    
+    const playButtonBg = this.add.rectangle(0, 0, buttonWidth, buttonHeight, GameConstants.COLORS.BUTTON_ENABLED)
+      .setStrokeStyle(3, GameConstants.COLORS.TEXT_PRIMARY);
+    const playButtonText = this.add.text(0, 0, 'JOIN BATTLE', {
       fontFamily: 'Arial Black',
-      fontSize: '20px',
+      fontSize: MobileUtils.isMobile() ? '16px' : '18px',
       color: '#ffffff',
     }).setOrigin(0.5);
 
     playButtonContainer.add([playButtonBg, playButtonText]);
-    playButtonContainer.setScale(1.2);
 
     playButtonBg.setInteractive({ useHandCursor: true })
       .on('pointerover', () => {
         playButtonBg.setFillStyle(GameConstants.COLORS.BUTTON_HOVER);
-        playButtonContainer.setScale(1.25);
+        playButtonContainer.setScale(1.05);
       })
       .on('pointerout', () => {
         playButtonBg.setFillStyle(GameConstants.COLORS.BUTTON_ENABLED);
-        playButtonContainer.setScale(1.2);
+        playButtonContainer.setScale(1);
       })
       .on('pointerdown', async () => {
         if (this.animationSystem) {
@@ -343,13 +344,16 @@ export class Splash extends Scene {
 
     this.playButton = playButtonContainer;
 
-    // How to Play button
+    // How to Play button - smaller and positioned separately
     const howToPlayButton = this.add.container(0, 0);
-    const howToPlayBg = this.add.rectangle(0, 0, 180, 50, 0x444444)
+    const howToPlayWidth = MobileUtils.isMobile() ? 140 : 160;
+    const howToPlayHeight = MobileUtils.isMobile() ? 40 : 45;
+    
+    const howToPlayBg = this.add.rectangle(0, 0, howToPlayWidth, howToPlayHeight, 0x444444)
       .setStrokeStyle(2, 0x888888);
     const howToPlayText = this.add.text(0, 0, 'How to Play', {
       fontFamily: 'Arial',
-      fontSize: '16px',
+      fontSize: MobileUtils.isMobile() ? '14px' : '16px',
       color: '#ffffff',
     }).setOrigin(0.5);
 
@@ -373,8 +377,9 @@ export class Splash extends Scene {
         }
       });
 
-    // Position buttons
+    // Store reference to how to play button for positioning
     this.children.add(howToPlayButton);
+    (this as any).howToPlayButton = howToPlayButton;
   }
 
 
@@ -559,20 +564,17 @@ export class Splash extends Scene {
       this.communityCounter.setScale(scaleFactor);
     }
 
-    // Position play button
+    // Position play button with proper spacing
     if (this.playButton) {
-      this.playButton.setPosition(width / 2, height * 0.8);
-      this.playButton.setScale(scaleFactor * 1.2); // Larger for mobile
+      this.playButton.setPosition(width / 2, height * 0.78);
+      this.playButton.setScale(scaleFactor);
     }
 
-    // Position how to play button
-    const howToPlayButton = this.children.list.find(child => 
-      child instanceof Phaser.GameObjects.Container && 
-      child !== this.playButton
-    ) as Phaser.GameObjects.Container | undefined;
+    // Position how to play button with safe spacing
+    const howToPlayButton = (this as any).howToPlayButton as Phaser.GameObjects.Container | undefined;
     
     if (howToPlayButton) {
-      howToPlayButton.setPosition(width / 2, height * 0.9);
+      howToPlayButton.setPosition(width / 2, height * 0.88);
       howToPlayButton.setScale(scaleFactor);
     }
   }

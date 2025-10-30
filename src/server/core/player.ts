@@ -121,13 +121,41 @@ export class PlayerManager {
     const twoMinutes = 2 * 60 * 1000; // 2 minutes in milliseconds
     
     if (sessionDuration >= twoMinutes) {
-      // Session expired, need to refresh
-      return { success: false, energyState: playerData.energyState };
+      // Auto-refresh session if expired
+      console.log('Session expired, auto-refreshing for user:', userId);
+      const refreshResult = await this.refreshSession(postId, userId);
+      if (refreshResult.success && refreshResult.playerData) {
+        // Use the refreshed player data
+        const updatedPlayerData = refreshResult.playerData;
+        updatedPlayerData.energyState.current--;
+        updatedPlayerData.sessionAttackCount++;
+        updatedPlayerData.energyState.lastRefresh = now;
+        updatedPlayerData.lastActiveTime = now;
+        
+        await redis.set(this.getPlayerKey(postId, userId), JSON.stringify(updatedPlayerData));
+        return { success: true, energyState: updatedPlayerData.energyState };
+      } else {
+        return { success: false, energyState: playerData.energyState };
+      }
     }
 
     // Check if player has attacks remaining (5-10 attacks per session)
     if (!playerData.energyState || playerData.energyState.current <= 0) {
-      return { success: false, energyState: playerData.energyState || { current: 0, max: 10, cooldowns: [], lastRefresh: now, sessionStart: now } };
+      // Try to auto-refresh if no attacks remaining
+      console.log('No attacks remaining, attempting auto-refresh for user:', userId);
+      const refreshResult = await this.refreshSession(postId, userId);
+      if (refreshResult.success && refreshResult.playerData) {
+        const updatedPlayerData = refreshResult.playerData;
+        updatedPlayerData.energyState.current--;
+        updatedPlayerData.sessionAttackCount++;
+        updatedPlayerData.energyState.lastRefresh = now;
+        updatedPlayerData.lastActiveTime = now;
+        
+        await redis.set(this.getPlayerKey(postId, userId), JSON.stringify(updatedPlayerData));
+        return { success: true, energyState: updatedPlayerData.energyState };
+      } else {
+        return { success: false, energyState: playerData.energyState || { current: 0, max: 10, cooldowns: [], lastRefresh: now, sessionStart: now } };
+      }
     }
 
     // Consume one attack from session
@@ -149,8 +177,8 @@ export class PlayerManager {
     const sessionDuration = now - playerData.energyState.sessionStart;
     const twoMinutes = 2 * 60 * 1000; // 2 minutes in milliseconds
     
-    // Can refresh if 2 minutes have passed or no attacks remaining
-    return sessionDuration >= twoMinutes || playerData.energyState.current <= 0;
+    // Always allow refresh if session is expired, no attacks remaining, or this is a new player
+    return sessionDuration >= twoMinutes || playerData.energyState.current <= 0 || !playerData.energyState.sessionStart;
   }
 
   /**

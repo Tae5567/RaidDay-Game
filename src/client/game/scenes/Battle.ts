@@ -1,8 +1,6 @@
 import { Scene } from 'phaser';
 import { BossEntity, getCurrentBoss } from '../entities/BossEntity';
 import { PlayerCharacter, CharacterClass } from '../entities/PlayerCharacter';
-import { SessionSystem } from '../systems/SessionSystem';
-import { DamageCalculator } from '../utils/DamageCalculator';
 import { ActionButton, ButtonState } from '../ui/ActionButton';
 import { DamageNumberPool } from '../ui/DamageNumber';
 import { GameConstants } from '../utils/GameConstants';
@@ -24,7 +22,6 @@ export class Battle extends Scene {
   private playerCharacter?: PlayerCharacter;
 
   // Systems
-  private sessionSystem?: SessionSystem;
   private damageNumberPool?: DamageNumberPool;
   private responsiveLayout?: ResponsiveLayoutSystem;
   private cameraEffects?: CameraEffectsSystem;
@@ -43,6 +40,11 @@ export class Battle extends Scene {
   private sessionAttackCount: number = 0;
   private isAttacking: boolean = false;
   private bossAttackTimer?: Phaser.Time.TimerEvent | undefined;
+  
+  // Session timer
+  private sessionTimeRemaining: number = 60; // 60 seconds
+  private sessionTimer?: Phaser.Time.TimerEvent;
+  private timerText?: Phaser.GameObjects.Text;
 
   // UI elements
   private bossHPBar?: Phaser.GameObjects.Graphics;
@@ -50,6 +52,7 @@ export class Battle extends Scene {
   private playerHPBar?: Phaser.GameObjects.Graphics;
   private playerHPText?: Phaser.GameObjects.Text;
   private attackButton?: ActionButton;
+  private specialButton?: ActionButton;
 
   constructor() {
     super('Battle');
@@ -60,7 +63,7 @@ export class Battle extends Scene {
     this.selectedClass = this.registry.get('selectedClass') as CharacterClass || CharacterClass.WARRIOR;
     console.log('Battle scene initialized with class:', this.selectedClass);
     
-    // Reset state
+    // Initialize with default values - will be loaded from server
     this.bossCurrentHP = GameConstants.BOSS_MAX_HP;
     this.bossMaxHP = GameConstants.BOSS_MAX_HP;
     this.playerCurrentHP = GameConstants.PLAYER_MAX_HP;
@@ -74,6 +77,12 @@ export class Battle extends Scene {
     console.log('Battle scene starting...');
     
     this.setupSystems();
+    
+    // Load persistent boss HP from server
+    await this.loadBossState();
+    
+    // Initialize new battle session
+    await this.initializeBattleSession();
     
     // Smooth transition in
     if (this.transitionSystem) {
@@ -97,6 +106,41 @@ export class Battle extends Scene {
     this.scale.on('resize', () => this.handleResize());
     
     console.log('Battle scene created successfully');
+  }
+
+  private async loadBossState(): Promise<void> {
+    try {
+      const response = await fetch('/api/boss-status');
+      if (response.ok) {
+        const bossStatus = await response.json();
+        this.bossCurrentHP = bossStatus.state.currentHP;
+        this.bossMaxHP = bossStatus.state.maxHP;
+        console.log('Loaded boss HP:', this.bossCurrentHP, '/', this.bossMaxHP);
+      }
+    } catch (error) {
+      console.error('Failed to load boss state:', error);
+      // Keep default values if loading fails
+    }
+  }
+
+  private async initializeBattleSession(): Promise<void> {
+    try {
+      // Start a new battle session
+      const response = await fetch('/api/refresh-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Battle session initialized:', result);
+      } else {
+        console.warn('Failed to initialize battle session, continuing with existing session');
+      }
+    } catch (error) {
+      console.error('Failed to initialize battle session:', error);
+      // Continue anyway - player might have an existing session
+    }
   }
 
   private async animateSceneEntrance(): Promise<void> {
@@ -132,7 +176,6 @@ export class Battle extends Scene {
   }
 
   private setupSystems(): void {
-    this.sessionSystem = new SessionSystem(this);
     this.damageNumberPool = new DamageNumberPool(this);
     this.responsiveLayout = new ResponsiveLayoutSystem(this);
     this.cameraEffects = new CameraEffectsSystem(this, MobileUtils.isMobile());
@@ -290,7 +333,7 @@ export class Battle extends Scene {
   private createUI(): void {
     const { width, height } = this.scale;
     
-    // Boss HP bar at top as specified
+    // Boss HP bar at top
     const hpBarY = 50;
     const hpBarWidth = Math.min(width - 40, 400);
     
@@ -313,22 +356,32 @@ export class Battle extends Scene {
       strokeThickness: 2,
     }).setOrigin(0.5);
 
-    // Player HP bar repositioned to not cover player icon
-    const playerHPBarY = height - 160; // Moved higher to avoid covering player
-    const playerHPBarWidth = Math.min(width - 40, 250); // Slightly smaller
+    // Session timer at top right
+    this.timerText = this.add.text(width - 20, 20, `Time: ${this.sessionTimeRemaining}s`, {
+      fontFamily: 'Arial Black',
+      fontSize: '16px',
+      color: '#ffff00',
+      stroke: '#000000',
+      strokeThickness: 2,
+    }).setOrigin(1, 0);
+
+    // Player HP bar - positioned to left side to not cover character
+    const playerHPBarY = height - 100;
+    const playerHPBarWidth = 200;
+    const playerHPBarX = 20; // Left side of screen
     
     // Player HP bar background
     const playerHPBarBg = this.add.graphics();
     playerHPBarBg.fillStyle(0x333333);
-    playerHPBarBg.fillRect(width / 2 - playerHPBarWidth / 2, playerHPBarY - 10, playerHPBarWidth, 16);
+    playerHPBarBg.fillRect(playerHPBarX, playerHPBarY - 10, playerHPBarWidth, 16);
     playerHPBarBg.lineStyle(2, 0xffffff);
-    playerHPBarBg.strokeRect(width / 2 - playerHPBarWidth / 2, playerHPBarY - 10, playerHPBarWidth, 16);
+    playerHPBarBg.strokeRect(playerHPBarX, playerHPBarY - 10, playerHPBarWidth, 16);
     
     // Player HP bar (will be updated)
     this.playerHPBar = this.add.graphics();
     
     // Player HP text - positioned above HP bar
-    this.playerHPText = this.add.text(width / 2, playerHPBarY - 25, `Your HP: ${this.playerCurrentHP} / ${this.playerMaxHP}`, {
+    this.playerHPText = this.add.text(playerHPBarX + playerHPBarWidth / 2, playerHPBarY - 25, `Your HP: ${this.playerCurrentHP} / ${this.playerMaxHP}`, {
       fontFamily: 'Arial',
       fontSize: '12px',
       color: '#ffffff',
@@ -336,8 +389,11 @@ export class Battle extends Scene {
       strokeThickness: 2,
     }).setOrigin(0.5);
 
-    // Create attack button as specified
+    // Create attack button positioned to right side
     this.createAttackButton();
+    
+    // Create special ability button
+    this.createSpecialButton();
     
     this.updateUI();
   }
@@ -345,13 +401,13 @@ export class Battle extends Scene {
   private createAttackButton(): void {
     const { width, height } = this.scale;
     
-    // Large, touch-friendly attack button positioned to not cover player
-    const buttonWidth = MobileUtils.isMobile() ? 140 : 120;
-    const buttonHeight = MobileUtils.isMobile() ? 60 : 50;
+    // Large, touch-friendly attack button positioned to right side
+    const buttonWidth = MobileUtils.isMobile() ? 100 : 90;
+    const buttonHeight = MobileUtils.isMobile() ? 50 : 45;
     
     this.attackButton = new ActionButton(this, {
-      x: width / 2,
-      y: height - 50, // Positioned at very bottom to avoid covering player
+      x: width - 60, // Right side of screen
+      y: height - 120, // Higher up to make room for special button
       width: buttonWidth,
       height: buttonHeight,
       text: 'ATTACK',
@@ -361,10 +417,243 @@ export class Battle extends Scene {
     // Register with responsive layout system
     if (this.responsiveLayout) {
       this.responsiveLayout.registerElement('attackButton', this.attackButton, 
-        { x: '50%', y: height - 50 }, // Portrait - bottom edge
-        { x: '50%', y: height - 40 }  // Landscape - bottom edge
+        { x: width - 60, y: height - 120 }, // Portrait
+        { x: width - 60, y: height - 100 }   // Landscape
       );
     }
+  }
+
+  private createSpecialButton(): void {
+    const { width, height } = this.scale;
+    
+    // Special ability button with class-specific text
+    const buttonWidth = MobileUtils.isMobile() ? 100 : 90;
+    const buttonHeight = MobileUtils.isMobile() ? 50 : 45;
+    
+    const specialAbilities = {
+      [CharacterClass.WARRIOR]: 'RAGE',
+      [CharacterClass.MAGE]: 'FIREBALL',
+      [CharacterClass.ROGUE]: 'STEALTH',
+      [CharacterClass.HEALER]: 'HEAL'
+    };
+    
+    this.specialButton = new ActionButton(this, {
+      x: width - 60, // Right side of screen
+      y: height - 60, // Below attack button
+      width: buttonWidth,
+      height: buttonHeight,
+      text: specialAbilities[this.selectedClass],
+      callback: () => this.performSpecialAbility()
+    });
+    
+    // Register with responsive layout system
+    if (this.responsiveLayout) {
+      this.responsiveLayout.registerElement('specialButton', this.specialButton, 
+        { x: width - 60, y: height - 60 }, // Portrait
+        { x: width - 60, y: height - 50 }   // Landscape
+      );
+    }
+  }
+
+  private async performSpecialAbility(): Promise<void> {
+    if (this.isAttacking) {
+      return;
+    }
+    
+    if (!this.playerCharacter || !this.boss || !this.damageNumberPool) {
+      return;
+    }
+
+    // Check if button is not on cooldown
+    if (this.specialButton?.getState() !== ButtonState.ENABLED) {
+      this.specialButton?.playErrorAnimation();
+      return;
+    }
+
+    this.isAttacking = true;
+
+    // Show success animation on button
+    this.specialButton?.playSuccessAnimation();
+
+    // Class-specific special abilities
+    switch (this.selectedClass) {
+      case CharacterClass.WARRIOR:
+        await this.performRage();
+        break;
+      case CharacterClass.MAGE:
+        await this.performFireball();
+        break;
+      case CharacterClass.ROGUE:
+        await this.performStealth();
+        break;
+      case CharacterClass.HEALER:
+        await this.performHeal();
+        break;
+    }
+
+    // Set long cooldown for special abilities (30 seconds)
+    this.specialButton?.startCooldown(30000);
+    this.isAttacking = false;
+  }
+
+  private async performRage(): Promise<void> {
+    // Warrior Rage: Next 3 attacks deal double damage
+    const damage = this.calculateClassBasedDamage() * 2;
+    
+    try {
+      const response = await fetch('/api/special-ability', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          characterClass: this.selectedClass,
+          damage: damage
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        this.bossCurrentHP = result.newBossHP;
+        this.sessionDamage += damage;
+        
+        // Visual effects
+        this.cameraEffects?.flashScreen(0xff0000, 300, 0.5);
+        this.damageNumberPool?.showDamage({
+          x: this.boss!.x,
+          y: this.boss!.y - 50,
+          damage: damage,
+          isCritical: true,
+          isSpecial: true
+        });
+      }
+    } catch (error) {
+      console.error('Rage ability error:', error);
+    }
+    
+    this.updateUI();
+  }
+
+  private async performFireball(): Promise<void> {
+    // Mage Fireball: High damage area attack
+    const damage = this.calculateClassBasedDamage() * 2.5;
+    
+    try {
+      const response = await fetch('/api/special-ability', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          characterClass: this.selectedClass,
+          damage: damage
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        this.bossCurrentHP = result.newBossHP;
+        this.sessionDamage += damage;
+        
+        // Visual effects
+        this.cameraEffects?.flashScreen(0xff8800, 300, 0.5);
+        this.particleSystem?.createCriticalBurst(this.boss!.x, this.boss!.y);
+        this.damageNumberPool?.showDamage({
+          x: this.boss!.x,
+          y: this.boss!.y - 50,
+          damage: damage,
+          isCritical: true,
+          isSpecial: true
+        });
+      }
+    } catch (error) {
+      console.error('Fireball ability error:', error);
+    }
+    
+    this.updateUI();
+  }
+
+  private async performStealth(): Promise<void> {
+    // Rogue Stealth: Guaranteed critical hit on next attack
+    const damage = this.calculateClassBasedDamage() * 3; // Guaranteed crit
+    
+    try {
+      const response = await fetch('/api/special-ability', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          characterClass: this.selectedClass,
+          damage: damage
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        this.bossCurrentHP = result.newBossHP;
+        this.sessionDamage += damage;
+        
+        // Visual effects
+        this.cameraEffects?.flashScreen(0x00ff00, 300, 0.5);
+        this.damageNumberPool?.showDamage({
+          x: this.boss!.x,
+          y: this.boss!.y - 50,
+          damage: damage,
+          isCritical: true,
+          isSpecial: true
+        });
+      }
+    } catch (error) {
+      console.error('Stealth ability error:', error);
+    }
+    
+    this.updateUI();
+  }
+
+  private async performHeal(): Promise<void> {
+    // Healer Heal: Restore HP and deal damage
+    const healAmount = 150;
+    const damage = this.calculateClassBasedDamage();
+    
+    // Heal player
+    this.playerCurrentHP = Math.min(this.playerMaxHP, this.playerCurrentHP + healAmount);
+    
+    try {
+      const response = await fetch('/api/special-ability', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          characterClass: this.selectedClass,
+          damage: damage
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        this.bossCurrentHP = result.newBossHP;
+        this.sessionDamage += damage;
+        
+        // Visual effects
+        this.cameraEffects?.flashScreen(0x00ffff, 300, 0.5);
+        
+        // Show heal number on player
+        this.damageNumberPool?.showDamage({
+          x: this.playerCharacter!.x,
+          y: this.playerCharacter!.y - 30,
+          damage: healAmount,
+          isCritical: false,
+          isPlayerDamage: true
+        });
+        
+        // Show damage on boss
+        this.damageNumberPool?.showDamage({
+          x: this.boss!.x,
+          y: this.boss!.y - 50,
+          damage: damage,
+          isCritical: false,
+          isSpecial: true
+        });
+      }
+    } catch (error) {
+      console.error('Heal ability error:', error);
+    }
+    
+    this.updateUI();
   }
 
   private setupControls(): void {
@@ -375,15 +664,22 @@ export class Battle extends Scene {
   }
 
   private startSession(): void {
-    // Start boss attack system
-    this.startBossAttacks();
-    
-    // Update UI every second
-    this.time.addEvent({
+    // Start 60-second session timer
+    this.sessionTimer = this.time.addEvent({
       delay: 1000,
-      callback: () => this.updateUI(),
+      callback: () => {
+        this.sessionTimeRemaining--;
+        this.updateUI();
+        
+        if (this.sessionTimeRemaining <= 0) {
+          this.endSession();
+        }
+      },
       loop: true
     });
+    
+    // Start boss attack system
+    this.startBossAttacks();
     
     // Check for battle end conditions
     this.time.addEvent({
@@ -391,6 +687,19 @@ export class Battle extends Scene {
       callback: () => this.checkBattleEnd(),
       loop: true
     });
+  }
+
+  private endSession(): void {
+    // Stop all timers
+    if (this.sessionTimer) {
+      this.sessionTimer.destroy();
+    }
+    if (this.bossAttackTimer) {
+      this.bossAttackTimer.destroy();
+    }
+    
+    // Transition to results
+    this.transitionToResults();
   }
 
   private startBossAttacks(): void {
@@ -460,17 +769,17 @@ export class Battle extends Scene {
     }
   }
 
-  private performAttack(): void {
+  private async performAttack(): Promise<void> {
     if (this.isAttacking) {
       return;
     }
     
-    if (!this.sessionSystem || !this.playerCharacter || !this.boss || !this.damageNumberPool) {
+    if (!this.playerCharacter || !this.boss || !this.damageNumberPool) {
       return;
     }
 
-    // Check if session allows attack and button is not on cooldown (spam prevention)
-    if (!this.sessionSystem.canAttack() || this.attackButton?.getState() !== ButtonState.ENABLED) {
+    // Check if button is not on cooldown (spam prevention)
+    if (this.attackButton?.getState() !== ButtonState.ENABLED) {
       this.attackButton?.playErrorAnimation();
       return;
     }
@@ -481,30 +790,102 @@ export class Battle extends Scene {
     // Show success animation on button
     this.attackButton?.playSuccessAnimation();
 
-    // Calculate damage
-    const damage = DamageCalculator.calculateDamage(
-      this.selectedClass,
-      1 // Player level
-    );
+    // Calculate damage based on class
+    const damage = this.calculateClassBasedDamage();
+    const isCritical = this.calculateCriticalHit();
 
-    // Play attack animation sequence (0.8 seconds total)
-    this.playAttackSequence(damage);
-
-    // Apply damage to boss
-    this.bossCurrentHP = Math.max(0, this.bossCurrentHP - damage);
-    this.sessionDamage += damage;
-
-    // Check for victory
-    if (this.bossCurrentHP <= 0) {
-      this.time.delayedCall(800, () => {
-        this.scene.start('Victory', {
-          bossData: getCurrentBoss(),
-          sessionDamage: this.sessionDamage
-        });
+    try {
+      // Call server API to apply damage
+      const response = await fetch('/api/attack', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          characterClass: this.selectedClass,
+          damage: damage,
+          isCritical: isCritical
+        })
       });
+
+      if (response.ok) {
+        const result = await response.json();
+        
+        if (result.success) {
+          // Update boss HP from server response
+          this.bossCurrentHP = result.newBossHP;
+          this.sessionDamage += damage;
+
+          // Play attack animation sequence
+          this.playAttackSequence(damage);
+
+          // Check for victory
+          if (this.bossCurrentHP <= 0) {
+            this.time.delayedCall(800, () => {
+              this.scene.start('Victory', {
+                bossData: getCurrentBoss(),
+                sessionDamage: this.sessionDamage
+              });
+            });
+          }
+        } else {
+          console.error('Attack failed:', result.message);
+          this.attackButton?.playErrorAnimation();
+          
+          // If session expired, try to refresh
+          if (result.message.includes('Session expired')) {
+            this.handleSessionExpired();
+          }
+        }
+      } else {
+        const errorData = await response.json();
+        console.error('Attack failed:', errorData);
+        this.attackButton?.playErrorAnimation();
+        
+        // If session expired, try to refresh
+        if (errorData.message && errorData.message.includes('Session expired')) {
+          this.handleSessionExpired();
+        }
+      }
+    } catch (error) {
+      console.error('Attack error:', error);
+      this.attackButton?.playErrorAnimation();
     }
 
     this.updateUI();
+    this.isAttacking = false;
+  }
+
+  private calculateClassBasedDamage(): number {
+    // Different damage ranges for each class
+    switch (this.selectedClass) {
+      case CharacterClass.WARRIOR:
+        return Phaser.Math.Between(180, 220); // Balanced
+      case CharacterClass.MAGE:
+        return Phaser.Math.Between(200, 250); // High damage
+      case CharacterClass.ROGUE:
+        return Phaser.Math.Between(160, 200); // Lower base, higher crit chance
+      case CharacterClass.HEALER:
+        return Phaser.Math.Between(140, 180); // Lower damage, support focused
+      default:
+        return Phaser.Math.Between(180, 220);
+    }
+  }
+
+  private calculateCriticalHit(): boolean {
+    // Different crit chances for each class
+    switch (this.selectedClass) {
+      case CharacterClass.WARRIOR:
+        return Math.random() < 0.15; // 15% crit chance
+      case CharacterClass.MAGE:
+        return Math.random() < 0.10; // 10% crit chance
+      case CharacterClass.ROGUE:
+        return Math.random() < 0.30; // 30% crit chance as specified
+      case CharacterClass.HEALER:
+        return Math.random() < 0.05; // 5% crit chance
+      default:
+        return Math.random() < 0.15;
+    }
   }
 
   private playAttackSequence(damage: number): void {
@@ -604,11 +985,26 @@ export class Battle extends Scene {
       this.bossHPText.setText(`Boss: ${this.bossCurrentHP.toLocaleString()} / ${this.bossMaxHP.toLocaleString()}`);
     }
 
-    // Update Player HP bar
+    // Update session timer
+    if (this.timerText) {
+      this.timerText.setText(`Time: ${this.sessionTimeRemaining}s`);
+      
+      // Change color based on time remaining
+      if (this.sessionTimeRemaining <= 10) {
+        this.timerText.setColor('#ff0000'); // Red when low
+      } else if (this.sessionTimeRemaining <= 30) {
+        this.timerText.setColor('#ffaa00'); // Orange when medium
+      } else {
+        this.timerText.setColor('#ffff00'); // Yellow when high
+      }
+    }
+
+    // Update Player HP bar - positioned on left side
     if (this.playerHPBar) {
       const hpPercentage = this.playerCurrentHP / this.playerMaxHP;
-      const hpBarWidth = Math.min(width - 40, 250);
-      const barWidth = hpBarWidth * hpPercentage;
+      const playerHPBarWidth = 200;
+      const playerHPBarX = 20;
+      const barWidth = playerHPBarWidth * hpPercentage;
       
       this.playerHPBar.clear();
       
@@ -618,7 +1014,7 @@ export class Battle extends Scene {
       if (hpPercentage < 0.25) barColor = 0xff0000; // Red
       
       this.playerHPBar.fillStyle(barColor);
-      this.playerHPBar.fillRect(width / 2 - hpBarWidth / 2, height - 170, barWidth, 16);
+      this.playerHPBar.fillRect(playerHPBarX, height - 110, barWidth, 16);
     }
     
     // Update Player HP text
@@ -666,5 +1062,32 @@ export class Battle extends Scene {
       console.error('Failed to get player rank:', error);
     }
     return 0; // Default rank if failed
+  }
+
+  private async handleSessionExpired(): Promise<void> {
+    try {
+      // Try to refresh the session
+      const response = await fetch('/api/refresh-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.status === 'success') {
+          console.log('Session refreshed successfully');
+          // Reset session timer to 60 seconds
+          this.sessionTimeRemaining = 60;
+          return;
+        }
+      }
+      
+      // If refresh failed, end the session
+      console.log('Session refresh failed, ending battle');
+      this.endSession();
+    } catch (error) {
+      console.error('Failed to refresh session:', error);
+      this.endSession();
+    }
   }
 }

@@ -254,7 +254,10 @@ router.post<{}, AttackResponse, AttackRequest>('/api/attack', async (_req, res):
 
     // Check and consume energy (simplified for 2-minute sessions)
     const energyResult = await PlayerManager.consumeEnergy(postId, userId);
+    console.log('Energy check result:', energyResult);
+    
     if (!energyResult.success) {
+      console.log('Attack failed - no energy remaining or session expired');
       res.status(400).json({
         success: false,
         damage: 0,

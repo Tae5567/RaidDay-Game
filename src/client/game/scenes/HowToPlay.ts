@@ -67,25 +67,26 @@ export class HowToPlay extends Scene {
       align: 'center',
     }).setOrigin(0.5);
 
-    // Concise, mobile-friendly instructions
+    // Very concise instructions to prevent overlap
     const instructions = this.add.text(0, 0,
-      '🎯 GOAL: Defeat the boss together!\n\n' +
-      '⚔️ Choose class → Attack boss\n' +
-      '❤️ Your HP: 500 | Boss HP: 50,000\n\n' +
+      '🎯 Defeat boss together!\n\n' +
+      '⚔️ Pick class → Attack\n' +
+      '⏱️ 60 seconds per battle\n\n' +
       '🏛️ CLASSES:\n' +
-      'Warrior: Balanced | Mage: High damage\n' +
-      'Rogue: Critical hits | Healer: Support\n\n' +
-      '⚠️ Boss fights back!\n' +
-      '🕐 New boss daily at 8 AM',
+      'Warrior: Balanced\n' +
+      'Mage: High damage\n' +
+      'Rogue: Critical hits\n' +
+      'Healer: Support\n\n' +
+      '⚠️ Boss attacks back!',
       {
         fontFamily: 'Arial Black',
-        fontSize: MobileUtils.isMobile() ? '16px' : '18px',
+        fontSize: MobileUtils.isMobile() ? '14px' : '16px',
         color: '#ffffff',
         stroke: '#000000',
         strokeThickness: 2,
         align: 'center',
-        lineSpacing: 6,
-        wordWrap: { width: MobileUtils.isMobile() ? 260 : 350 }
+        lineSpacing: 4,
+        wordWrap: { width: MobileUtils.isMobile() ? 240 : 300 }
       }
     ).setOrigin(0.5);
 
@@ -148,14 +149,14 @@ export class HowToPlay extends Scene {
       this.contentContainer.setPosition(width / 2, height / 2);
       this.contentContainer.setScale(scaleFactor);
 
-      // Layout content elements vertically with proper spacing for mobile
+      // Layout content elements with safe spacing
       const children = this.contentContainer.list as Phaser.GameObjects.Text[];
       if (children.length >= 2) {
         const title = children[0];
         const instructions = children[1];
         if (title && instructions) {
-          title.setPosition(0, MobileUtils.isMobile() ? -120 : -140); // Title higher up
-          instructions.setPosition(0, MobileUtils.isMobile() ? 10 : 20);    // Instructions with proper spacing
+          title.setPosition(0, MobileUtils.isMobile() ? -150 : -160); // Title much higher
+          instructions.setPosition(0, MobileUtils.isMobile() ? -20 : 0);    // Instructions centered
         }
       }
     }
